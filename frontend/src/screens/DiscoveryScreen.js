@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,31 @@ import {
   StyleSheet,
   Linking,
   RefreshControl,
+  Animated,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { updateLocation, getNearbyUsers } from '../api/discovery';
+import { sendSignal, getOutgoingSignals } from '../api/signals';
+
+function Toast({ message, visible }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.delay(2200),
+        Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [visible, message, opacity]);
+
+  return (
+    <Animated.View style={[toastStyles.toast, { opacity }]} pointerEvents="none">
+      <Text style={toastStyles.toastText}>{message}</Text>
+    </Animated.View>
+  );
+}
 
 export default function DiscoveryScreen() {
   const [users, setUsers] = useState([]);
@@ -19,6 +41,14 @@ export default function DiscoveryScreen() {
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [signalledIds, setSignalledIds] = useState(new Set());
+  const [toastMsg, setToastMsg] = useState('');
+  const [toastKey, setToastKey] = useState(0);
+
+  function showToast(msg) {
+    setToastMsg(msg);
+    setToastKey((k) => k + 1);
+  }
 
   const refresh = useCallback(async (showRefreshing = false) => {
     if (showRefreshing) setRefreshing(true);
@@ -30,6 +60,12 @@ export default function DiscoveryScreen() {
       const nearby = await getNearbyUsers();
       setUsers(nearby);
       setLastUpdated(new Date());
+      try {
+        const outgoing = await getOutgoingSignals();
+        setSignalledIds(new Set(outgoing.map((s) => s.recipient.user_id)));
+      } catch {
+        // non-fatal: leave signalledIds as-is
+      }
     } catch (err) {
       setError('Could not load nearby users. Please try again.');
     } finally {
@@ -53,6 +89,20 @@ export default function DiscoveryScreen() {
     const interval = setInterval(() => refresh(), 60_000);
     return () => clearInterval(interval);
   }, [permissionStatus, refresh]);
+
+  async function handleSignal(userId) {
+    setSignalledIds((prev) => new Set([...prev, userId]));
+    try {
+      await sendSignal(userId);
+    } catch (err) {
+      setSignalledIds((prev) => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
+      showToast('Could not send signal. Try again.');
+    }
+  }
 
   if (permissionStatus === 'denied') {
     return (
@@ -123,12 +173,24 @@ export default function DiscoveryScreen() {
                   {item.bio}
                 </Text>
               ) : null}
+              <TouchableOpacity
+                style={[styles.signalBtn, signalledIds.has(item.user_id) && styles.signalBtnSent]}
+                onPress={() => handleSignal(item.user_id)}
+                disabled={signalledIds.has(item.user_id)}
+                accessibilityRole="button"
+                accessibilityLabel={signalledIds.has(item.user_id) ? 'Signal sent' : 'Send signal'}
+              >
+                <Text style={styles.signalBtnText}>
+                  {signalledIds.has(item.user_id) ? 'Sent \u2713' : 'Signal'}
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
         />
       )}
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      <Toast key={toastKey} message={toastMsg} visible={!!toastMsg} />
     </View>
   );
 }
@@ -179,4 +241,35 @@ const styles = StyleSheet.create({
   },
   settingsBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   errorText: { color: '#c00', textAlign: 'center', padding: 12, fontSize: 13 },
+  signalBtn: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    backgroundColor: '#6C47FF',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+  },
+  signalBtnSent: {
+    backgroundColor: '#C7C7CC',
+  },
+  signalBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+});
+
+const toastStyles = StyleSheet.create({
+  toast: {
+    position: 'absolute',
+    bottom: 90,
+    left: 24,
+    right: 24,
+    backgroundColor: '#323232',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  toastText: { color: '#fff', fontSize: 14 },
 });

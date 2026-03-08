@@ -10,6 +10,7 @@ import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileEditScreen from '../screens/ProfileEditScreen';
 import DiscoveryScreen from '../screens/DiscoveryScreen';
+import SignalsScreen from '../screens/SignalsScreen';
 
 const AuthStack = createNativeStackNavigator();
 const AppStack = createNativeStackNavigator();
@@ -40,6 +41,11 @@ function AppNavigator() {
         name="Discovery"
         component={DiscoveryScreen}
         options={{ headerShown: true, title: 'Nearby' }}
+      />
+      <AppStack.Screen
+        name="Signals"
+        component={SignalsScreen}
+        options={{ headerShown: true, title: 'Signals' }}
       />
     </AppStack.Navigator>
   );

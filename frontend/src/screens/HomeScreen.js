@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { setVisibility } from '../api/profile';
 import { useAuth } from '../context/AuthContext';
+import { getIncomingSignals } from '../api/signals';
 
 // Reset server-side visibility to invisible on every new session (privacy invariant)
 async function resetVisibilityOnMount() {
@@ -42,8 +43,12 @@ export default function HomeScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [toastKey, setToastKey] = useState(0);
+  const [signalCount, setSignalCount] = useState(0);
 
   useEffect(() => { resetVisibilityOnMount(); }, []);
+  useEffect(() => {
+    getIncomingSignals().then((s) => setSignalCount(s.length)).catch(() => {});
+  }, []);
 
   function showToast(msg) {
     setToastMsg(msg);
@@ -111,6 +116,17 @@ export default function HomeScreen({ navigation }) {
       </Text>
 
       <TouchableOpacity
+        style={homeStyles.signalsBtn}
+        onPress={() => navigation.navigate('Signals')}
+        accessibilityRole="button"
+        accessibilityLabel="View signals"
+      >
+        <Text style={homeStyles.signalsBtnText}>
+          {'Signals' + (signalCount > 0 ? ' (' + signalCount + ')' : '')}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
         style={homeStyles.discoverBtn}
         onPress={() => navigation.navigate('Discovery')}
         accessibilityRole="button"
@@ -169,8 +185,16 @@ const homeStyles = StyleSheet.create({
   toggleLoading: { opacity: 0.7 },
   toggleText: { color: '#fff', fontSize: 18, fontWeight: '700', textAlign: 'center', letterSpacing: 1 },
   hint: { marginTop: 28, fontSize: 14, color: '#888', textAlign: 'center' },
-  discoverBtn: {
+  signalsBtn: {
     marginTop: 24,
+    backgroundColor: '#4CAF50',
+    borderRadius: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+  },
+  signalsBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  discoverBtn: {
+    marginTop: 12,
     backgroundColor: '#6C47FF',
     borderRadius: 24,
     paddingVertical: 14,
