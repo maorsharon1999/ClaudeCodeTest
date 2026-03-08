@@ -88,6 +88,29 @@ describe('GET /api/v1/profile/me', () => {
   });
 });
 
+// --- AC: No plaintext phone in profile API response ---
+describe('GET /api/v1/profile/me — privacy', () => {
+  it('does not include phone or phone_hash in profile response', async () => {
+    mockProfile = {
+      user_id: TEST_USER_ID,
+      display_name: 'Privacy Check',
+      birth_date: '1990-01-01',
+      bio: null,
+      gender: null,
+      looking_for: null,
+      photos: [],
+      updated_at: new Date(),
+    };
+    const res = await request(app)
+      .get('/api/v1/profile/me')
+      .set('Authorization', `Bearer ${makeAccessToken()}`);
+    expect(res.status).toBe(200);
+    const profileKeys = Object.keys(res.body.profile);
+    expect(profileKeys).not.toContain('phone');
+    expect(profileKeys).not.toContain('phone_hash');
+  });
+});
+
 describe('PUT /api/v1/profile/me', () => {
   it('returns 400 when under 18', async () => {
     const res = await request(app)
@@ -114,5 +137,55 @@ describe('PUT /api/v1/profile/me', () => {
       .send({ display_name: 'Test User', birth_date: '1990-06-15' });
     expect(res.status).toBe(200);
     expect(res.body.profile).toBeDefined();
+  });
+
+  it('returns 400 when display_name is missing', async () => {
+    const res = await request(app)
+      .put('/api/v1/profile/me')
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .send({ birth_date: '1990-06-15' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 when birth_date is missing', async () => {
+    const res = await request(app)
+      .put('/api/v1/profile/me')
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .send({ display_name: 'No Date' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+// --- AC: Max 3 photos enforced; 4th upload rejected ---
+describe('POST /api/v1/profile/me/photos', () => {
+  it('returns 400 PHOTOS_LIMIT when profile already has 3 photos', async () => {
+    const pool = require('../db/pool');
+    // Override FOR UPDATE query to return profile with 3 photos
+    pool.query.mockImplementationOnce(async (sql) => {
+      if (sql.includes('FOR UPDATE')) {
+        return { rows: [{ photos: ['http://a.com/1.jpg', 'http://a.com/2.jpg', 'http://a.com/3.jpg'] }] };
+      }
+    });
+    const res = await request(app)
+      .post('/api/v1/profile/me/photos')
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .send({ url: 'http://a.com/4.jpg' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('PHOTOS_LIMIT');
+  });
+
+  it('returns 400 for invalid photo URL', async () => {
+    const pool = require('../db/pool');
+    pool.query.mockImplementationOnce(async (sql) => {
+      if (sql.includes('FOR UPDATE')) return { rows: [{ photos: [] }] };
+    });
+    const res = await request(app)
+      .post('/api/v1/profile/me/photos')
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .send({ url: 'not-a-url' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 });

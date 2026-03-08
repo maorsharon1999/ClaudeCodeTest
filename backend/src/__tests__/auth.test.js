@@ -122,3 +122,65 @@ describe('DELETE /api/v1/auth/session', () => {
     expect(res.status).toBe(400);
   });
 });
+
+// --- AC: OTP expires after 10 minutes ---
+describe('verifyOtp with expired OTP', () => {
+  it('returns 400 OTP_NOT_FOUND when OTP row has expires_at in the past', async () => {
+    // The pool mock returns rows:[] when no valid OTP exists — simulate expiry
+    const pool = require('../db/pool');
+    pool.query.mockImplementationOnce(async (sql) => {
+      if (sql.includes('SELECT id, code_hash')) return { rows: [] }; // expired → no row
+    });
+    const res = await request(app)
+      .post('/api/v1/auth/otp/verify')
+      .send({ phone: '+12125550099', code: '000000' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('OTP_NOT_FOUND');
+  });
+});
+
+// --- AC: 5 wrong attempts locks OTP ---
+describe('verifyOtp lockout after 5 failed attempts', () => {
+  it('returns 429 OTP_LOCKED when attempt_count >= 5', async () => {
+    const pool = require('../db/pool');
+    const lockedHash = await bcrypt.hash('999999', 10);
+    pool.query.mockImplementationOnce(async (sql) => {
+      if (sql.includes('SELECT id, code_hash')) {
+        return { rows: [{ id: 'otp-locked', code_hash: lockedHash, attempt_count: 5, verified: false }] };
+      }
+    });
+    const res = await request(app)
+      .post('/api/v1/auth/otp/verify')
+      .send({ phone: '+12125550099', code: '000000' });
+    expect(res.status).toBe(429);
+    expect(res.body.error.code).toBe('OTP_LOCKED');
+  });
+});
+
+// --- AC: Logout invalidates refresh token; subsequent refresh returns 401 ---
+describe('Refresh token revoked after logout', () => {
+  const jwt = require('jsonwebtoken');
+
+  it('returns 401 REFRESH_TOKEN_REVOKED when refresh token used after DELETE /auth/session', async () => {
+    // Issue a real (test-signed) refresh token
+    const jti = 'test-jti-logout-001';
+    const refreshToken = jwt.sign(
+      { sub: 'mock-user-uuid', jti },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: 604800 }
+    );
+
+    // Step 1: logout — puts jti in Redis revoked set
+    const logoutRes = await request(app)
+      .delete('/api/v1/auth/session')
+      .send({ refresh_token: refreshToken });
+    expect(logoutRes.status).toBe(200);
+
+    // Step 2: attempt refresh — must be rejected
+    const refreshRes = await request(app)
+      .post('/api/v1/auth/token/refresh')
+      .send({ refresh_token: refreshToken });
+    expect(refreshRes.status).toBe(401);
+    expect(refreshRes.body.error.code).toBe('REFRESH_TOKEN_REVOKED');
+  });
+});

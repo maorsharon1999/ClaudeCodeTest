@@ -7,13 +7,13 @@ const { Pool } = require('pg');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 async function migrate() {
-  const sql = fs.readFileSync(
-    path.join(__dirname, 'migrations', '001_init.sql'),
-    'utf8'
-  );
+  const migrationsDir = path.join(__dirname, 'migrations');
+  const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
   try {
-    await pool.query(sql);
-    console.log('Migration 001_init.sql applied successfully.');
+    for (const file of files) {
+      await pool.query(fs.readFileSync(path.join(migrationsDir, file), 'utf8'));
+      console.log(`Applied ${file}`);
+    }
   } catch (err) {
     console.error('Migration failed:', err.message);
     process.exit(1);

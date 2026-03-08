@@ -8,6 +8,8 @@ const express = require('express');
 const authRoutes       = require('./routes/auth');
 const profileRoutes    = require('./routes/profile');
 const visibilityRoutes = require('./routes/visibility');
+const locationRoutes   = require('./routes/location');
+const discoveryRoutes  = require('./routes/discovery');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -21,6 +23,8 @@ app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 app.use('/api/v1/auth',       authRoutes);
 app.use('/api/v1/profile',    profileRoutes);
 app.use('/api/v1/visibility', visibilityRoutes);
+app.use('/api/v1/location',   locationRoutes);
+app.use('/api/v1/discovery',  discoveryRoutes);
 
 // 404 handler
 app.use((_req, res) => {
