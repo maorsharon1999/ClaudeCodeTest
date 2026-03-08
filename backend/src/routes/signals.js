@@ -54,6 +54,10 @@ router.post('/', signalSendLimiter, async (req, res, next) => {
     if (err.code === 'SIGNAL_COOLDOWN') {
       return res.status(429).json({ error: { code: err.code, message: err.message } });
     }
+    // Postgres unique constraint violation (race condition on concurrent inserts)
+    if (err.code === '23505') {
+      return res.status(409).json({ error: { code: 'SIGNAL_DUPLICATE', message: 'A signal to this user already exists.' } });
+    }
     next(err);
   }
 });

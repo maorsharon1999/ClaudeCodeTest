@@ -71,7 +71,7 @@ async function sendSignal(senderId, recipientId) {
 
   // 5. Duplicate/cooldown check
   const existingResult = await pool.query(
-    'SELECT id, state, created_at FROM signals WHERE sender_id = $1 AND recipient_id = $2',
+    'SELECT id, state, created_at, updated_at FROM signals WHERE sender_id = $1 AND recipient_id = $2',
     [senderId, recipientId]
   );
 
@@ -81,9 +81,10 @@ async function sendSignal(senderId, recipientId) {
       throw makeError(409, 'SIGNAL_DUPLICATE', 'A signal to this user already exists.');
     }
     if (existing.state === 'declined') {
-      const createdAt = new Date(existing.created_at);
+      // Cooldown measured from when the signal was declined (updated_at), not created
+      const declinedAt = new Date(existing.updated_at || existing.created_at);
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      if (createdAt > sevenDaysAgo) {
+      if (declinedAt > sevenDaysAgo) {
         throw makeError(429, 'SIGNAL_COOLDOWN', 'Cannot signal this user again yet. Please wait.');
       }
       // Older than 7 days — delete stale declined row
@@ -105,7 +106,14 @@ async function sendSignal(senderId, recipientId) {
   return insertResult.rows[0];
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function respondSignal(signalId, recipientId, action) {
+  // 0. Validate signalId is a UUID before hitting the DB
+  if (!UUID_RE.test(signalId)) {
+    throw makeError(404, 'NOT_FOUND', 'Signal not found.');
+  }
+
   // 1. Fetch signal
   const signalResult = await pool.query(
     'SELECT id, sender_id, recipient_id, state FROM signals WHERE id = $1',

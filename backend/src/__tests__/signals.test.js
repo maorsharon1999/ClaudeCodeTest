@@ -11,6 +11,7 @@ const jwt     = require('jsonwebtoken');
 const TEST_USER_ID      = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
 const RECIPIENT_USER_ID = 'bbbbbbbb-cccc-dddd-eeee-ffffffffffff';
 const SIGNAL_ID         = 'cccccccc-dddd-eeee-ffff-aaaaaaaaaaaa';
+const RATE_USER_ID      = 'ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb';
 
 function makeAccessToken(userId) {
   return jwt.sign({ sub: userId || TEST_USER_ID }, process.env.JWT_ACCESS_SECRET, { expiresIn: 900 });
@@ -45,19 +46,22 @@ jest.mock('../db/pool', () => ({
     }
 
     // Duplicate/cooldown check — SELECT existing signal by sender+recipient
-    if (sql.includes('SELECT id, state, created_at FROM signals')) {
+    if (sql.includes('SELECT id, state, created_at, updated_at FROM signals')) {
       if (mockMode === 'signal_pending_exists') {
-        return { rows: [{ id: SIGNAL_ID, state: 'pending', created_at: new Date() }] };
+        return { rows: [{ id: SIGNAL_ID, state: 'pending', created_at: new Date(), updated_at: new Date() }] };
       }
       if (mockMode === 'signal_approved_exists') {
-        return { rows: [{ id: SIGNAL_ID, state: 'approved', created_at: new Date() }] };
+        return { rows: [{ id: SIGNAL_ID, state: 'approved', created_at: new Date(), updated_at: new Date() }] };
       }
       if (mockMode === 'signal_declined_recent') {
-        return { rows: [{ id: SIGNAL_ID, state: 'declined', created_at: new Date() }] };
+        // declined 1 hour ago — still within 7-day cooldown
+        const recentDecline = new Date(Date.now() - 60 * 60 * 1000);
+        return { rows: [{ id: SIGNAL_ID, state: 'declined', created_at: recentDecline, updated_at: recentDecline }] };
       }
       if (mockMode === 'signal_declined_old') {
-        const old = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
-        return { rows: [{ id: SIGNAL_ID, state: 'declined', created_at: old }] };
+        // declined 8 days ago — cooldown has expired
+        const oldDecline = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+        return { rows: [{ id: SIGNAL_ID, state: 'declined', created_at: oldDecline, updated_at: oldDecline }] };
       }
       return { rows: [] };
     }
@@ -259,6 +263,26 @@ describe('POST /api/v1/signals', () => {
     expect(res.body.error.code).toBe('SIGNAL_DUPLICATE');
   });
 
+  it('returns 429 SIGNAL_COOLDOWN on declined signal within 7 days', async () => {
+    mockMode = 'signal_declined_recent';
+    const res = await request(app)
+      .post('/api/v1/signals')
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .send({ recipient_id: RECIPIENT_USER_ID });
+    expect(res.status).toBe(429);
+    expect(res.body.error.code).toBe('SIGNAL_COOLDOWN');
+  });
+
+  it('returns 201 on resend after declined signal older than 7 days', async () => {
+    mockMode = 'signal_declined_old';
+    const res = await request(app)
+      .post('/api/v1/signals')
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .send({ recipient_id: RECIPIENT_USER_ID });
+    expect(res.status).toBe(201);
+    expect(res.body.signal.state).toBe('pending');
+  });
+
   it('returns 201 with signal object on success (nearby)', async () => {
     const res = await request(app)
       .post('/api/v1/signals')
@@ -269,6 +293,21 @@ describe('POST /api/v1/signals', () => {
     expect(res.body.signal.id).toBe(SIGNAL_ID);
     expect(res.body.signal.state).toBe('pending');
     expect(res.body.signal.proximity_bucket).toBe('nearby');
+  });
+
+  it('returns 429 RATE_LIMIT after exceeding 20 signals per hour', async () => {
+    // Use a dedicated user so other tests are not affected by rate limiter state.
+    // The limiter fires after 20 requests; send 21 and assert the last is 429.
+    const token = makeAccessToken(RATE_USER_ID);
+    let lastRes;
+    for (let i = 0; i < 21; i++) {
+      lastRes = await request(app)
+        .post('/api/v1/signals')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ recipient_id: RECIPIENT_USER_ID });
+    }
+    expect(lastRes.status).toBe(429);
+    expect(lastRes.body.error.code).toBe('RATE_LIMIT');
   });
 });
 
@@ -375,6 +414,7 @@ describe('GET /api/v1/signals/incoming', () => {
     expect(sig.sender).not.toHaveProperty('lat');
     expect(sig.sender).not.toHaveProperty('lng');
     expect(sig.sender).not.toHaveProperty('dist_m');
+    expect(sig.sender).not.toHaveProperty('score');
   });
 });
 
