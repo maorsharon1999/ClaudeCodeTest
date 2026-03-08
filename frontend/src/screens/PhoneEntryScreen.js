@@ -41,9 +41,9 @@ export default function PhoneEntryScreen({ navigation }) {
       navigation.navigate('OtpVerify', { phone: phone.trim() });
     } catch (err) {
       const code = err.response?.data?.error?.code;
-      if (code === 'rate_limited') {
+      if (code === 'OTP_RATE_LIMIT' || code === 'RATE_LIMIT') {
         setErrorMsg('Too many requests. Please wait and try again.');
-      } else if (code === 'invalid_format') {
+      } else if (code === 'VALIDATION_ERROR') {
         setErrorMsg('Invalid phone number format.');
       } else {
         setErrorMsg('Something went wrong. Please try again.');

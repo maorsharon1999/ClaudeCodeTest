@@ -76,7 +76,8 @@ export function AuthProvider({ children }) {
 
   const signOut = useCallback(async () => {
     try {
-      await deleteSession();
+      const storedRefreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+      if (storedRefreshToken) await deleteSession(storedRefreshToken);
     } catch {
       // Best-effort
     }

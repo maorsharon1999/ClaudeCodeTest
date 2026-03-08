@@ -121,7 +121,11 @@ async function verifyOtp(phone, code) {
 
   const row = rows[0];
 
-  if (row.attempt_count >= MAX_OTP_ATTEMPTS) {
+  // Check per-phone Redis lockout (set after MAX_OTP_ATTEMPTS failures)
+  const redis = await getRedis();
+  const lockKey = `otp_phone_lock:${phoneHash}`;
+  const locked = await redis.get(lockKey);
+  if (locked || row.attempt_count >= MAX_OTP_ATTEMPTS) {
     const err = new Error('OTP locked after too many failed attempts. Request a new code.');
     err.status = 429;
     err.code   = 'OTP_LOCKED';
@@ -131,10 +135,14 @@ async function verifyOtp(phone, code) {
   const match = await bcrypt.compare(code, row.code_hash);
 
   if (!match) {
-    await pool.query(
-      `UPDATE otp_attempts SET attempt_count = attempt_count + 1 WHERE id = $1`,
+    const { rows: updated } = await pool.query(
+      `UPDATE otp_attempts SET attempt_count = attempt_count + 1 WHERE id = $1 RETURNING attempt_count`,
       [row.id]
     );
+    // Set Redis lockout if this was the 5th failure
+    if (updated[0].attempt_count >= MAX_OTP_ATTEMPTS) {
+      await redis.set(lockKey, '1', { EX: 10 * 60 });
+    }
     const err = new Error('Invalid OTP code.');
     err.status = 400;
     err.code   = 'OTP_INVALID';

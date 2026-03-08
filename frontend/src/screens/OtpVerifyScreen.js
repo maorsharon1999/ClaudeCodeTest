@@ -60,13 +60,13 @@ export default function OtpVerifyScreen({ route, navigation }) {
       // Navigation handled by RootNavigator based on auth state
     } catch (err) {
       const code_err = err.response?.data?.error?.code;
-      if (code_err === 'max_attempts') {
+      if (code_err === 'OTP_LOCKED') {
         setStatus('locked');
         setErrorMsg('Too many incorrect attempts. Please request a new code.');
-      } else if (code_err === 'expired') {
+      } else if (code_err === 'OTP_NOT_FOUND') {
         setStatus('error');
         setErrorMsg('Code expired. Please request a new one.');
-      } else if (code_err === 'invalid_code') {
+      } else if (code_err === 'OTP_INVALID') {
         setStatus('error');
         setErrorMsg('Incorrect code. Please try again.');
       } else {
@@ -101,7 +101,7 @@ export default function OtpVerifyScreen({ route, navigation }) {
       startCountdown();
     } catch (err) {
       const code_err = err.response?.data?.error?.code;
-      if (code_err === 'rate_limited') {
+      if (code_err === 'OTP_RATE_LIMIT' || code_err === 'RATE_LIMIT') {
         setErrorMsg('Too many requests. Please wait.');
       } else {
         setErrorMsg('Failed to resend. Please try again.');

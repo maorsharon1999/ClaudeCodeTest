@@ -20,6 +20,6 @@ export async function refreshToken(refresh_token) {
   return response.data; // { access_token }
 }
 
-export async function deleteSession() {
-  await client.delete('/auth/session');
+export async function deleteSession(refresh_token) {
+  await client.delete('/auth/session', { data: { refresh_token } });
 }

@@ -31,6 +31,10 @@ async function upsertProfile(userId, body) {
     const e = new Error('display_name is required.');
     e.status = 400; e.code = 'VALIDATION_ERROR'; throw e;
   }
+  if (display_name.trim().length > 40) {
+    const e = new Error('display_name must be 40 characters or fewer.');
+    e.status = 400; e.code = 'VALIDATION_ERROR'; throw e;
+  }
   if (!birth_date) {
     const e = new Error('birth_date is required (YYYY-MM-DD).');
     e.status = 400; e.code = 'VALIDATION_ERROR'; throw e;

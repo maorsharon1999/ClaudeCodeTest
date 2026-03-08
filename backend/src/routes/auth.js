@@ -1,7 +1,8 @@
 'use strict';
 const express    = require('express');
 const rateLimit  = require('express-rate-limit');
-const authService = require('../services/authService');
+const authService    = require('../services/authService');
+const profileService = require('../services/profileService');
 
 const router = express.Router();
 
@@ -14,12 +15,14 @@ const otpRequestLimiter = rateLimit({
   message: { error: { code: 'RATE_LIMIT', message: 'Too many requests. Try again later.' } },
 });
 
+const E164_REGEX = /^\+[1-9]\d{6,14}$/;
+
 // POST /auth/otp/request
 router.post('/otp/request', otpRequestLimiter, async (req, res, next) => {
   try {
     const { phone } = req.body;
-    if (!phone || typeof phone !== 'string' || phone.trim() === '') {
-      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'phone is required.' } });
+    if (!phone || typeof phone !== 'string' || !E164_REGEX.test(phone.trim())) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'phone must be a valid E.164 number (e.g. +12125551234).' } });
     }
     await authService.requestOtp(phone.trim());
     return res.status(200).json({ message: 'OTP sent.' });
@@ -32,14 +35,16 @@ router.post('/otp/request', otpRequestLimiter, async (req, res, next) => {
 router.post('/otp/verify', async (req, res, next) => {
   try {
     const { phone, code } = req.body;
-    if (!phone || !code) {
-      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'phone and code are required.' } });
+    if (!phone || !code || !E164_REGEX.test(String(phone).trim())) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'phone (E.164) and code are required.' } });
     }
     const tokens = await authService.verifyOtp(phone.trim(), String(code).trim());
+    const profile = await profileService.getProfile(tokens.userId);
     return res.status(200).json({
-      access_token:  tokens.accessToken,
-      refresh_token: tokens.refreshToken,
-      user_id:       tokens.userId,
+      access_token:     tokens.accessToken,
+      refresh_token:    tokens.refreshToken,
+      user_id:          tokens.userId,
+      profile_complete: !!profile,
     });
   } catch (err) {
     next(err);

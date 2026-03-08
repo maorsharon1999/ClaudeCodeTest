@@ -11,6 +11,11 @@ import {
 import { setVisibility } from '../api/profile';
 import { useAuth } from '../context/AuthContext';
 
+// Reset server-side visibility to invisible on every new session (privacy invariant)
+async function resetVisibilityOnMount() {
+  try { await setVisibility('invisible'); } catch { /* best-effort */ }
+}
+
 function Toast({ message, visible }) {
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -37,6 +42,8 @@ export default function HomeScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [toastKey, setToastKey] = useState(0);
+
+  useEffect(() => { resetVisibilityOnMount(); }, []);
 
   function showToast(msg) {
     setToastMsg(msg);

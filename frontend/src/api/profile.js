@@ -2,7 +2,7 @@ import client from './client';
 
 export async function getProfile() {
   const response = await client.get('/profile/me');
-  return response.data;
+  return response.data.profile;
 }
 
 export async function updateProfile(data) {
