@@ -52,12 +52,20 @@ export function AuthProvider({ children }) {
   // On mount: attempt silent refresh from stored token
   useEffect(() => {
     async function init() {
+      // AUTH FROZEN: skip token refresh, go straight into the app.
+      // Restore the original try/catch block below when re-enabling auth.
+      setProfileComplete(true);
+      setAuthState(true);
+      return;
+
+      /* eslint-disable no-unreachable */
       try {
         await doRefresh();
         setAuthState(true);
       } catch {
         setAuthState(false);
       }
+      /* eslint-enable no-unreachable */
     }
     init();
   }, [doRefresh]);
