@@ -5,7 +5,7 @@
 process.env.DATABASE_URL    = 'postgresql://test:test@localhost:5432/test';
 process.env.REDIS_URL        = 'redis://localhost:6379';
 process.env.JWT_ACCESS_SECRET  = 'test-access-secret-long-enough-32chars!';
-process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-long-enough-32!';
+process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-long-enough-32!!';
 process.env.PHONE_HMAC_SECRET  = 'test-phone-hmac-secret-long-enough!!';
 
 const request = require('supertest');

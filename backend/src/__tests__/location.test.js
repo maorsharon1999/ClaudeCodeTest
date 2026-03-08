@@ -167,7 +167,7 @@ describe('GET /api/v1/discovery/nearby', () => {
     expect(user).not.toHaveProperty('score');
   });
 
-  it('returns at most 20 results', async () => {
+  it('caps results at 20 even when DB returns more', async () => {
     mockHasLocation = true;
     mockNearbyUsers = Array.from({ length: 25 }, (_, i) => ({
       user_id: `user-${i}`,
@@ -182,8 +182,7 @@ describe('GET /api/v1/discovery/nearby', () => {
       .get('/api/v1/discovery/nearby')
       .set('Authorization', `Bearer ${makeAccessToken()}`);
     expect(res.status).toBe(200);
-    // The mock returns all 25 but the SQL LIMIT 20 is enforced in the real DB query
-    // In unit tests we verify the service strips score; limit is a DB concern
+    expect(res.body.users.length).toBeLessThanOrEqual(20);
     expect(res.body.users.every(u => !('score' in u))).toBe(true);
   });
 });

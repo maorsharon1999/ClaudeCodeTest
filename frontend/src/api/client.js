@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:3000/api/v1';
+// Set EXPO_PUBLIC_API_URL in your .env file for device/staging builds.
+// Falls back to localhost for local development with Metro.
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 
 const client = axios.create({
   baseURL: BASE_URL,

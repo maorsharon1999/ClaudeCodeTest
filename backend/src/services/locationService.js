@@ -40,10 +40,15 @@ async function getNearby(userId) {
     [userId]
   );
   const callerProfile = profileResult.rows[0] || {};
-  const callerGender = callerProfile.gender || null;
+  const callerGender     = callerProfile.gender      || null;
   const callerLookingFor = callerProfile.looking_for || null;
 
   // Main CTE query
+  // Bilateral compatibility is enforced both as a hard WHERE filter and as a score bonus:
+  //   - Hard filter: caller's looking_for must include candidate's gender (or be 'everyone')
+  //   - Hard filter: candidate's looking_for must include caller's gender (or be 'everyone')
+  //   - Score +2: both preferences are non-null and mutually satisfied
+  // $1=userId, $2=callerLat, $3=callerLng, $4=callerGender, $5=callerLookingFor
   const result = await pool.query(
     `WITH candidates AS (
       SELECT
@@ -53,6 +58,7 @@ async function getNearby(userId) {
         p.bio,
         p.photos,
         p.gender,
+        p.looking_for AS candidate_looking_for,
         vs.updated_at AS visibility_updated_at,
         6371000 * acos(LEAST(1.0,
           cos(radians($2)) * cos(radians(ul.lat))
@@ -65,6 +71,9 @@ async function getNearby(userId) {
       WHERE p.user_id != $1
         AND vs.state = 'visible'
         AND ul.recorded_at > NOW() - INTERVAL '30 minutes'
+        -- Bilateral hard filters (skipped when caller has no profile data)
+        AND ($5 IS NULL OR $5 = 'everyone' OR p.gender = $5)
+        AND ($4 IS NULL OR p.looking_for = 'everyone' OR p.looking_for = $4)
     ),
     bucketed AS (
       SELECT
@@ -74,8 +83,8 @@ async function getNearby(userId) {
         bio,
         photos,
         gender,
+        candidate_looking_for,
         visibility_updated_at,
-        dist_m,
         CASE
           WHEN dist_m < 500  THEN 'nearby'
           WHEN dist_m < 2000 THEN 'same_area'
@@ -100,8 +109,8 @@ async function getNearby(userId) {
             END
           + CASE
               WHEN $4 IS NULL OR $5 IS NULL THEN 0
-              WHEN $5 = 'everyone' OR gender = $4 THEN 2
-              WHEN gender = 'everyone' THEN 2
+              WHEN ($5 = 'everyone' OR gender = $5)
+               AND (candidate_looking_for = 'everyone' OR candidate_looking_for = $4) THEN 2
               ELSE 0
             END
         ) AS score
@@ -114,8 +123,10 @@ async function getNearby(userId) {
     [userId, callerLat, callerLng, callerGender, callerLookingFor]
   );
 
-  // Strip score before returning
-  return result.rows.map(({ score: _score, ...rest }) => rest);
+  // Strip score and apply defensive JS cap before returning
+  return result.rows
+    .slice(0, 20)
+    .map(({ score: _score, ...rest }) => rest);
 }
 
 module.exports = { upsertLocation, getNearby };
