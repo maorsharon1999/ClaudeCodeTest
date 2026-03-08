@@ -6,7 +6,7 @@ process.env.DATABASE_URL    = 'postgresql://test:test@localhost:5432/test';
 process.env.REDIS_URL        = 'redis://localhost:6379';
 process.env.JWT_ACCESS_SECRET  = 'test-access-secret-long-enough-32chars!';
 process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-long-enough-32!!';
-process.env.PHONE_HMAC_SECRET  = 'test-phone-hmac-secret-long-enough!!';
+process.env.PHONE_HMAC_SECRET  = 'test-phone-hmac-secret-long-enough!!!';
 
 const request = require('supertest');
 const bcrypt  = require('bcrypt');
@@ -76,22 +76,8 @@ describe('POST /api/v1/auth/otp/request', () => {
 });
 
 describe('POST /api/v1/auth/otp/verify', () => {
-  let storedCodeHash;
-
-  beforeEach(async () => {
-    // Reset store and inject a fresh OTP row into pool mock
-    const pool = require('../db/pool');
-    const code = '123456';
-    storedCodeHash = await bcrypt.hash(code, 10);
-    // Prime the otp row in mock via direct mutation
-    pool.query.mockImplementationOnce(async (sql) => {
-      if (sql.includes('SELECT id, code_hash')) {
-        return { rows: [{ id: 'otp-id-1', code_hash: storedCodeHash, attempt_count: 0, verified: false }] };
-      }
-    });
-  });
-
   it('returns 400 with missing fields', async () => {
+    // Fails validation before any DB call — no mock setup needed
     const res = await request(app).post('/api/v1/auth/otp/verify').send({ phone: '+1212' });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
