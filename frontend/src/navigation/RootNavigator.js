@@ -9,6 +9,7 @@ import OtpVerifyScreen from '../screens/OtpVerifyScreen';
 import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileEditScreen from '../screens/ProfileEditScreen';
+import DiscoveryScreen from '../screens/DiscoveryScreen';
 
 const AuthStack = createNativeStackNavigator();
 const AppStack = createNativeStackNavigator();
@@ -34,6 +35,11 @@ function AppNavigator() {
         name="ProfileEdit"
         component={ProfileEditScreen}
         options={{ headerShown: true, title: 'Edit Profile' }}
+      />
+      <AppStack.Screen
+        name="Discovery"
+        component={DiscoveryScreen}
+        options={{ headerShown: true, title: 'Nearby' }}
       />
     </AppStack.Navigator>
   );

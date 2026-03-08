@@ -111,6 +111,15 @@ export default function HomeScreen({ navigation }) {
       </Text>
 
       <TouchableOpacity
+        style={homeStyles.discoverBtn}
+        onPress={() => navigation.navigate('Discovery')}
+        accessibilityRole="button"
+        accessibilityLabel="Find people nearby"
+      >
+        <Text style={homeStyles.discoverText}>Find People Nearby</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
         style={homeStyles.signOutBtn}
         onPress={signOut}
         accessibilityRole="button"
@@ -160,6 +169,14 @@ const homeStyles = StyleSheet.create({
   toggleLoading: { opacity: 0.7 },
   toggleText: { color: '#fff', fontSize: 18, fontWeight: '700', textAlign: 'center', letterSpacing: 1 },
   hint: { marginTop: 28, fontSize: 14, color: '#888', textAlign: 'center' },
+  discoverBtn: {
+    marginTop: 24,
+    backgroundColor: '#6C47FF',
+    borderRadius: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+  },
+  discoverText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   signOutBtn: {
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 48 : 28,
