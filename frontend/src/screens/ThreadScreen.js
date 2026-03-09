@@ -230,7 +230,7 @@ export default function ThreadScreen({ route, navigation }) {
     <KeyboardAvoidingView
       style={styles.container}
       behavior="padding"
-      keyboardVerticalOffset={headerHeight}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
     >
       <FlatList
         ref={listRef}
