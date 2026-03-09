@@ -5,6 +5,10 @@ import { configureInterceptors } from '../api/client';
 import { refreshToken as apiRefreshToken, deleteSession } from '../api/auth';
 
 const REFRESH_TOKEN_KEY = 'bubble_refresh_token';
+// Note: expo-secure-store 14.x (SDK 54) changed its internal key storage format on Android.
+// Existing Android users upgrading from SDK 50 will have their stored refresh token
+// silently unreadable — doRefresh() will throw "No refresh token" and authState becomes false.
+// This results in a clean forced logout (not a data leak). Users must re-authenticate once.
 
 // expo-secure-store has no web implementation — fall back to localStorage on web
 const storage = {
