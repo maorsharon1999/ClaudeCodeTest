@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { getProfile, updateProfile } from '../api/profile';
 import { ProfileForm } from './ProfileSetupScreen';
@@ -13,6 +12,7 @@ export default function ProfileEditScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
   const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     getProfile()
@@ -22,13 +22,14 @@ export default function ProfileEditScreen({ navigation }) {
 
   async function handleSave(data) {
     setSaving(true);
+    setSaveError('');
     try {
       await updateProfile(data);
       navigation.goBack();
     } catch (err) {
       const message =
         err.response?.data?.error?.message || 'Failed to save profile. Please try again.';
-      Alert.alert('Error', message);
+      setSaveError(message);
     } finally {
       setSaving(false);
     }
@@ -51,15 +52,21 @@ export default function ProfileEditScreen({ navigation }) {
   }
 
   return (
-    <ProfileForm
-      initialValues={profile}
-      onSave={handleSave}
-      saving={saving}
-    />
+    <>
+      {saveError ? (
+        <Text style={editStyles.saveError}>{saveError}</Text>
+      ) : null}
+      <ProfileForm
+        initialValues={profile}
+        onSave={handleSave}
+        saving={saving}
+      />
+    </>
   );
 }
 
 const editStyles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
   errorText: { color: '#E53935', fontSize: 15, textAlign: 'center', paddingHorizontal: 32 },
+  saveError: { color: '#E53935', fontSize: 14, paddingHorizontal: 24, paddingTop: 12 },
 });

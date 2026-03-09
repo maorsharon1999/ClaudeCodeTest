@@ -8,7 +8,6 @@ import {
   ScrollView,
   Platform,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { updateProfile } from '../api/profile';
 import { useAuth } from '../context/AuthContext';
@@ -107,7 +106,12 @@ const GENDER_OPTIONS = [
   { label: 'Non-binary', value: 'nonbinary' },
   { label: 'Prefer not to say', value: 'other' },
 ];
-const LOOKING_FOR_OPTIONS = ['Friends', 'Dates', 'Networking', 'Anything'];
+const LOOKING_FOR_OPTIONS = [
+  { label: 'Men', value: 'men' },
+  { label: 'Women', value: 'women' },
+  { label: 'Non-binary', value: 'nonbinary' },
+  { label: 'Everyone', value: 'everyone' },
+];
 const MIN_AGE_YEARS = 18;
 
 function isAtLeast18(date) {
@@ -284,18 +288,18 @@ export function ProfileForm({ initialValues = {}, onSave, saving }) {
       <View style={styles.optionRow}>
         {LOOKING_FOR_OPTIONS.map((opt) => (
           <TouchableOpacity
-            key={opt}
-            style={[styles.optionChip, lookingFor === opt && styles.optionChipActive]}
-            onPress={() => setLookingFor(lookingFor === opt ? '' : opt)}
+            key={opt.value}
+            style={[styles.optionChip, lookingFor === opt.value && styles.optionChipActive]}
+            onPress={() => setLookingFor(lookingFor === opt.value ? '' : opt.value)}
             accessibilityRole="button"
           >
             <Text
               style={[
                 styles.optionChipText,
-                lookingFor === opt && styles.optionChipTextActive,
+                lookingFor === opt.value && styles.optionChipTextActive,
               ]}
             >
-              {opt}
+              {opt.label}
             </Text>
           </TouchableOpacity>
         ))}
