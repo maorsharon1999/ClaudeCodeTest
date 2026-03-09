@@ -55,7 +55,11 @@ export default function DiscoveryScreen() {
     else setLoading(true);
     setError(null);
     try {
-      const pos = await Location.getCurrentPositionAsync({});
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: 8000,
+        distanceInterval: 0,
+      });
       await updateLocation(pos.coords.latitude, pos.coords.longitude);
       const nearby = await getNearbyUsers();
       setUsers(nearby);
@@ -67,7 +71,14 @@ export default function DiscoveryScreen() {
         // non-fatal: leave signalledIds as-is
       }
     } catch (err) {
-      setError('Could not load nearby users. Please try again.');
+      const msg = err?.message || '';
+      if (msg.includes('location') || msg.includes('Location') || msg.includes('permission')) {
+        setError('Could not get your location. Make sure location is enabled and try again.');
+      } else if (msg.includes('Network') || msg.includes('network') || msg.includes('timeout') || err?.code === 'ECONNABORTED') {
+        setError('Could not reach server. Check your connection and try again.');
+      } else {
+        setError(`Could not load nearby users. Please try again.`);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
