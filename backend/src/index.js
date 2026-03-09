@@ -11,6 +11,9 @@ const visibilityRoutes = require('./routes/visibility');
 const locationRoutes   = require('./routes/location');
 const discoveryRoutes  = require('./routes/discovery');
 const signalRoutes     = require('./routes/signals');
+const threadsRoutes    = require('./routes/threads');
+const blocksRoutes     = require('./routes/blocks');
+const reportsRoutes    = require('./routes/reports');
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -27,6 +30,9 @@ app.use('/api/v1/visibility', visibilityRoutes);
 app.use('/api/v1/location',   locationRoutes);
 app.use('/api/v1/discovery',  discoveryRoutes);
 app.use('/api/v1/signals',    signalRoutes);
+app.use('/api/v1/threads',   threadsRoutes);
+app.use('/api/v1/blocks',    blocksRoutes);
+app.use('/api/v1/reports',   reportsRoutes);
 
 // 404 handler
 app.use((_req, res) => {
