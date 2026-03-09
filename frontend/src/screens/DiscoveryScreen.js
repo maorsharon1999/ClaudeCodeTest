@@ -71,14 +71,9 @@ export default function DiscoveryScreen() {
         // non-fatal: leave signalledIds as-is
       }
     } catch (err) {
-      const msg = err?.message || '';
-      if (msg.includes('location') || msg.includes('Location') || msg.includes('permission')) {
-        setError('Could not get your location. Make sure location is enabled and try again.');
-      } else if (msg.includes('Network') || msg.includes('network') || msg.includes('timeout') || err?.code === 'ECONNABORTED') {
-        setError('Could not reach server. Check your connection and try again.');
-      } else {
-        setError(`Could not load nearby users. Please try again.`);
-      }
+      const msg = err?.message || 'unknown';
+      const status = err?.response?.status || '';
+      setError(`Error: ${status} ${msg}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
