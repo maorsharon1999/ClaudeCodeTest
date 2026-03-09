@@ -1,9 +1,26 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { configureInterceptors } from '../api/client';
 import { refreshToken as apiRefreshToken, deleteSession } from '../api/auth';
 
 const REFRESH_TOKEN_KEY = 'bubble_refresh_token';
+
+// expo-secure-store has no web implementation — fall back to localStorage on web
+const storage = {
+  async getItem(key) {
+    if (Platform.OS === 'web') return localStorage.getItem(key);
+    return SecureStore.getItemAsync(key);
+  },
+  async setItem(key, value) {
+    if (Platform.OS === 'web') { localStorage.setItem(key, value); return; }
+    return SecureStore.setItemAsync(key, value);
+  },
+  async deleteItem(key) {
+    if (Platform.OS === 'web') { localStorage.removeItem(key); return; }
+    return SecureStore.deleteItemAsync(key);
+  },
+};
 
 const AuthContext = createContext(null);
 
@@ -22,7 +39,7 @@ export function AuthProvider({ children }) {
   const getAccessToken = useCallback(() => accessTokenRef.current, []);
 
   const doRefresh = useCallback(async () => {
-    const storedRefresh = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+    const storedRefresh = await storage.getItem(REFRESH_TOKEN_KEY);
     if (!storedRefresh) {
       throw new Error('No refresh token');
     }
@@ -36,7 +53,7 @@ export function AuthProvider({ children }) {
   const onAuthFailure = useCallback(async () => {
     setAccessToken(null);
     accessTokenRef.current = null;
-    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => {});
+    await storage.deleteItem(REFRESH_TOKEN_KEY).catch(() => {});
     setAuthState(false);
   }, []);
 
@@ -63,7 +80,7 @@ export function AuthProvider({ children }) {
   }, [doRefresh]);
 
   const signIn = useCallback(async ({ access_token, refresh_token, profile_complete }) => {
-    await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refresh_token);
+    await storage.setItem(REFRESH_TOKEN_KEY, refresh_token);
     setAccessToken(access_token);
     accessTokenRef.current = access_token;
     setProfileComplete(!!profile_complete);
@@ -76,14 +93,14 @@ export function AuthProvider({ children }) {
 
   const signOut = useCallback(async () => {
     try {
-      const storedRefreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+      const storedRefreshToken = await storage.getItem(REFRESH_TOKEN_KEY);
       if (storedRefreshToken) await deleteSession(storedRefreshToken);
     } catch {
       // Best-effort
     }
     setAccessToken(null);
     accessTokenRef.current = null;
-    await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY).catch(() => {});
+    await storage.deleteItem(REFRESH_TOKEN_KEY).catch(() => {});
     setAuthState(false);
   }, []);
 
