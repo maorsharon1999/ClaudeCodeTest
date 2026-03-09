@@ -10,9 +10,14 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { updateProfile } from '../api/profile';
 import { useAuth } from '../context/AuthContext';
+
+// DateTimePicker is native-only; import conditionally
+let DateTimePicker = null;
+if (Platform.OS !== 'web') {
+  DateTimePicker = require('@react-native-community/datetimepicker').default;
+}
 
 const GENDER_OPTIONS = ['Man', 'Woman', 'Non-binary', 'Prefer not to say'];
 const LOOKING_FOR_OPTIONS = ['Friends', 'Dates', 'Networking', 'Anything'];
@@ -108,35 +113,54 @@ export function ProfileForm({ initialValues = {}, onSave, saving }) {
       <Text style={styles.label}>
         Birth Date <Text style={styles.required}>*</Text>
       </Text>
-      <TouchableOpacity
-        style={[styles.input, styles.dateButton, errors.birthDate && styles.inputError]}
-        onPress={() => setShowDatePicker(true)}
-        accessibilityRole="button"
-        accessibilityLabel="Select birth date"
-      >
-        <Text style={birthDate ? styles.dateText : styles.datePlaceholder}>
-          {birthDate ? birthDate.toLocaleDateString() : 'Select your birth date'}
-        </Text>
-      </TouchableOpacity>
-      {errors.birthDate && <Text style={styles.errorText}>{errors.birthDate}</Text>}
-
-      {showDatePicker && (
-        <DateTimePicker
-          value={birthDate || maxDate}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          maximumDate={maxDate}
-          onChange={handleDateChange}
+      {Platform.OS === 'web' ? (
+        <input
+          type="date"
+          max={maxDate.toISOString().split('T')[0]}
+          value={birthDate ? birthDate.toISOString().split('T')[0] : ''}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val) {
+              const d = new Date(val + 'T00:00:00');
+              setBirthDate(d);
+              if (errors.birthDate) setErrors((err) => ({ ...err, birthDate: undefined }));
+            }
+          }}
+          style={{
+            height: 50, borderWidth: 1.5, borderColor: errors.birthDate ? '#E53935' : '#ddd',
+            borderRadius: 10, paddingLeft: 14, fontSize: 16, color: '#111',
+            width: '100%', boxSizing: 'border-box', border: `1.5px solid ${errors.birthDate ? '#E53935' : '#ddd'}`,
+          }}
         />
+      ) : (
+        <>
+          <TouchableOpacity
+            style={[styles.input, styles.dateButton, errors.birthDate && styles.inputError]}
+            onPress={() => setShowDatePicker(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Select birth date"
+          >
+            <Text style={birthDate ? styles.dateText : styles.datePlaceholder}>
+              {birthDate ? birthDate.toLocaleDateString() : 'Select your birth date'}
+            </Text>
+          </TouchableOpacity>
+          {showDatePicker && DateTimePicker && (
+            <DateTimePicker
+              value={birthDate || maxDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              maximumDate={maxDate}
+              onChange={handleDateChange}
+            />
+          )}
+          {Platform.OS === 'ios' && showDatePicker && (
+            <TouchableOpacity style={styles.doneBtn} onPress={() => setShowDatePicker(false)}>
+              <Text style={styles.doneBtnText}>Done</Text>
+            </TouchableOpacity>
+          )}
+        </>
       )}
-      {Platform.OS === 'ios' && showDatePicker && (
-        <TouchableOpacity
-          style={styles.doneBtn}
-          onPress={() => setShowDatePicker(false)}
-        >
-          <Text style={styles.doneBtnText}>Done</Text>
-        </TouchableOpacity>
-      )}
+      {errors.birthDate && <Text style={styles.errorText}>{errors.birthDate}</Text>}
 
       <Text style={styles.label}>
         Bio <Text style={styles.optional}>(optional)</Text>
