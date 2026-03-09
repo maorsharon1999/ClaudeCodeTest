@@ -5,9 +5,12 @@ export async function getThreads() {
   return res.data.threads;
 }
 
-export async function getMessages(threadId) {
-  const res = await client.get(`/threads/${threadId}/messages`);
-  return res.data.messages;
+export async function getMessages(threadId, { before, limit } = {}) {
+  const params = {};
+  if (before) params.before = before;
+  if (limit) params.limit = limit;
+  const res = await client.get(`/threads/${threadId}/messages`, { params });
+  return { messages: res.data.messages, has_more: res.data.has_more };
 }
 
 export async function sendMessage(threadId, body) {

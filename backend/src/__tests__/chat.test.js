@@ -4,6 +4,7 @@ process.env.REDIS_URL          = 'redis://localhost:6379';
 process.env.JWT_ACCESS_SECRET  = 'test-access-secret-long-enough-32chars!';
 process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-long-enough-32!!';
 process.env.PHONE_HMAC_SECRET  = 'test-phone-hmac-secret-long-enough!!!';
+process.env.ADMIN_SECRET       = 'test-admin-secret-long-enough-32chars!';
 
 const request = require('supertest');
 const jwt     = require('jsonwebtoken');
@@ -65,8 +66,14 @@ jest.mock('../db/pool', () => ({
       return { rows: [] };
     }
 
-    // Messages list
-    if (sql.includes('FROM chat_messages WHERE thread_id')) {
+    // Ban check in auth middleware
+    if (sql.includes('SELECT banned_at FROM users WHERE id')) {
+      if (mockMode === 'banned') return { rows: [{ banned_at: new Date() }] };
+      return { rows: [{ banned_at: null }] };
+    }
+
+    // Messages list (paginated — ORDER BY sent_at DESC LIMIT)
+    if (sql.includes('FROM chat_messages') && sql.includes('ORDER BY sent_at')) {
       if (mockMode === 'no_messages') return { rows: [] };
       return {
         rows: [{
@@ -100,7 +107,34 @@ jest.mock('../db/pool', () => ({
       if (mockMode === 'already_blocked') {
         const err = new Error('duplicate'); err.code = '23505'; throw err;
       }
+      if (mockMode === 'block_user_not_found') {
+        const err = new Error('fk'); err.code = '23503'; throw err;
+      }
       return { rows: [] };
+    }
+
+    // Block cancels pending signal (UPDATE signals SET state='declined')
+    if (sql.includes("UPDATE signals SET state = 'declined'")) {
+      return { rowCount: 1 };
+    }
+
+    // Moderation: ban/unban user
+    if (sql.includes('UPDATE users SET banned_at')) {
+      if (mockMode === 'user_not_found_ban') return { rowCount: 0 };
+      return { rowCount: 1 };
+    }
+
+    // Moderation: get reports
+    if (sql.includes('FROM reports r') && sql.includes('JOIN profiles rp1')) {
+      return {
+        rows: [{
+          id: MSG_ID,
+          reason: 'Spam',
+          created_at: new Date().toISOString(),
+          reporter_name: 'Alice',
+          reported_name: 'Bob',
+        }],
+      };
     }
 
     // Block delete
@@ -481,5 +515,111 @@ describe('POST /api/v1/reports', () => {
       .send({ reported_id: OTHER_ID, reason: 'inappropriate content' });
     expect(res.status).toBe(201);
     expect(res.body.reported).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Slice 5: UUID validation, block-cancels-signal, ban enforcement
+// ---------------------------------------------------------------------------
+describe('UUID validation on blocks/reports', () => {
+  it('POST /blocks returns 400 VALIDATION_ERROR for malformed blocked_id', async () => {
+    const res = await request(app)
+      .post('/api/v1/blocks')
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .send({ blocked_id: 'not-a-uuid' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('POST /reports returns 400 VALIDATION_ERROR for malformed reported_id', async () => {
+    const res = await request(app)
+      .post('/api/v1/reports')
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .send({ reported_id: 'not-a-uuid', reason: 'spam' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('POST /blocks returns 404 USER_NOT_FOUND on FK violation', async () => {
+    mockMode = 'block_user_not_found';
+    const res = await request(app)
+      .post('/api/v1/blocks')
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .send({ blocked_id: OTHER_ID });
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('USER_NOT_FOUND');
+  });
+});
+
+describe('Ban enforcement', () => {
+  it('GET /api/v1/threads returns 403 ACCOUNT_BANNED for banned user', async () => {
+    mockMode = 'banned';
+    const res = await request(app)
+      .get('/api/v1/threads')
+      .set('Authorization', `Bearer ${makeAccessToken()}`);
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('ACCOUNT_BANNED');
+  });
+});
+
+describe('GET /internal/reports', () => {
+  it('returns 401 without Authorization header', async () => {
+    const res = await request(app).get('/internal/reports');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 401 with wrong admin token', async () => {
+    const res = await request(app)
+      .get('/internal/reports')
+      .set('Authorization', 'Bearer wrong-token');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 200 with reports array when ADMIN_SECRET matches', async () => {
+    const res = await request(app)
+      .get('/internal/reports')
+      .set('Authorization', `Bearer ${process.env.ADMIN_SECRET}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.reports)).toBe(true);
+  });
+});
+
+describe('POST|DELETE /internal/users/:id/ban', () => {
+  it('POST returns 401 without admin token', async () => {
+    const res = await request(app).post(`/internal/users/${CALLER_ID}/ban`);
+    expect(res.status).toBe(401);
+  });
+
+  it('POST returns 400 for malformed UUID', async () => {
+    const res = await request(app)
+      .post('/internal/users/not-a-uuid/ban')
+      .set('Authorization', `Bearer ${process.env.ADMIN_SECRET}`);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('POST returns 404 when user does not exist', async () => {
+    mockMode = 'user_not_found_ban';
+    const res = await request(app)
+      .post(`/internal/users/${CALLER_ID}/ban`)
+      .set('Authorization', `Bearer ${process.env.ADMIN_SECRET}`);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+  });
+
+  it('POST returns 200 { banned: true } on success', async () => {
+    const res = await request(app)
+      .post(`/internal/users/${CALLER_ID}/ban`)
+      .set('Authorization', `Bearer ${process.env.ADMIN_SECRET}`);
+    expect(res.status).toBe(200);
+    expect(res.body.banned).toBe(true);
+  });
+
+  it('DELETE returns 200 { banned: false } on success', async () => {
+    const res = await request(app)
+      .delete(`/internal/users/${CALLER_ID}/ban`)
+      .set('Authorization', `Bearer ${process.env.ADMIN_SECRET}`);
+    expect(res.status).toBe(200);
+    expect(res.body.banned).toBe(false);
   });
 });

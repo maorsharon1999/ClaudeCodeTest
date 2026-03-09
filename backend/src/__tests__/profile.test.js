@@ -162,11 +162,14 @@ describe('PUT /api/v1/profile/me', () => {
 describe('POST /api/v1/profile/me/photos', () => {
   it('returns 400 PHOTOS_LIMIT when profile already has 3 photos', async () => {
     const pool = require('../db/pool');
-    // Override FOR UPDATE query to return profile with 3 photos
+    // First call is the ban check in authRequired — return not-banned
+    pool.query.mockImplementationOnce(async () => ({ rows: [] }));
+    // Second call: FOR UPDATE query to return profile with 3 photos
     pool.query.mockImplementationOnce(async (sql) => {
       if (sql.includes('FOR UPDATE')) {
         return { rows: [{ photos: ['http://a.com/1.jpg', 'http://a.com/2.jpg', 'http://a.com/3.jpg'] }] };
       }
+      return { rows: [] };
     });
     const res = await request(app)
       .post('/api/v1/profile/me/photos')
@@ -178,8 +181,12 @@ describe('POST /api/v1/profile/me/photos', () => {
 
   it('returns 400 for invalid photo URL', async () => {
     const pool = require('../db/pool');
+    // First call is the ban check in authRequired — return not-banned
+    pool.query.mockImplementationOnce(async () => ({ rows: [] }));
+    // Second call: FOR UPDATE query
     pool.query.mockImplementationOnce(async (sql) => {
       if (sql.includes('FOR UPDATE')) return { rows: [{ photos: [] }] };
+      return { rows: [] };
     });
     const res = await request(app)
       .post('/api/v1/profile/me/photos')

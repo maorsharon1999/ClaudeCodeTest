@@ -89,7 +89,7 @@ async function getThreadsForUser(userId) {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-async function getMessages(threadId, callerId) {
+async function getMessages(threadId, callerId, { before = null, limit = 50 } = {}) {
   if (!UUID_RE.test(threadId)) {
     throw makeError(404, 'NOT_FOUND', 'Thread not found.');
   }
@@ -117,17 +117,33 @@ async function getMessages(threadId, callerId) {
     throw makeError(403, 'FORBIDDEN', 'You are not a member of this thread.');
   }
 
+  const clampedLimit = Math.min(Math.max(parseInt(limit) || 50, 1), 100);
+
   const msgResult = await pool.query(
-    `SELECT id, body, sent_at, sender_id FROM chat_messages WHERE thread_id = $1 ORDER BY sent_at ASC`,
-    [threadId]
+    `SELECT id, body, sent_at, sender_id
+     FROM chat_messages
+     WHERE thread_id = $1
+       AND ($2::uuid IS NULL OR sent_at < (
+         SELECT sent_at FROM chat_messages WHERE id = $2
+       ))
+     ORDER BY sent_at DESC
+     LIMIT $3`,
+    [threadId, before, clampedLimit]
   );
 
-  return msgResult.rows.map(row => ({
-    id: row.id,
-    body: row.body,
-    sent_at: row.sent_at,
-    is_mine: row.sender_id === callerId,
-  }));
+  // Reverse so client always receives messages in ascending sent_at order
+  const rows = msgResult.rows.reverse();
+  const hasMore = msgResult.rows.length === clampedLimit;
+
+  return {
+    messages: rows.map(row => ({
+      id: row.id,
+      body: row.body,
+      sent_at: row.sent_at,
+      is_mine: row.sender_id === callerId,
+    })),
+    has_more: hasMore,
+  };
 }
 
 async function sendMessage(threadId, callerId, body) {

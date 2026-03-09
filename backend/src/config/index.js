@@ -17,4 +17,5 @@ module.exports = {
   otpExpirySeconds: parseInt(process.env.OTP_EXPIRY_SECONDS || '600', 10),
   jwtAccessExpirySeconds: 15 * 60,        // 15 minutes
   jwtRefreshExpirySeconds: 7 * 24 * 3600, // 7 days
+  adminSecret: process.env.ADMIN_SECRET || '',
 };

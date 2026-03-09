@@ -67,6 +67,9 @@ describe('PUT /api/v1/visibility/me', () => {
 
   it('sets state to visible', async () => {
     const pool = require('../db/pool');
+    // First call is the ban check in authRequired — return not-banned
+    pool.query.mockImplementationOnce(async () => ({ rows: [] }));
+    // Second call: INSERT INTO visibility_states
     pool.query.mockImplementationOnce(async () => ({
       rows: [{ state: 'visible', updated_at: new Date() }],
     }));

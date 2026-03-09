@@ -39,8 +39,9 @@ router.get('/', threadReadLimiter, async (req, res, next) => {
 // GET /:thread_id/messages
 router.get('/:thread_id/messages', threadReadLimiter, async (req, res, next) => {
   try {
-    const messages = await getMessages(req.params.thread_id, req.userId);
-    return res.status(200).json({ messages });
+    const { before, limit } = req.query;
+    const result = await getMessages(req.params.thread_id, req.userId, { before, limit });
+    return res.status(200).json({ messages: result.messages, has_more: result.has_more });
   } catch (err) {
     if (err.code === 'NOT_FOUND') return res.status(404).json({ error: { code: err.code, message: err.message } });
     if (err.code === 'FORBIDDEN') return res.status(403).json({ error: { code: err.code, message: err.message } });

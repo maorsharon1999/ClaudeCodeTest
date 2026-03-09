@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getMessages, sendMessage, blockUser, reportUser } from '../api/chat';
@@ -50,6 +51,8 @@ export default function ThreadScreen({ route, navigation }) {
   const [sending, setSending] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [toastKey, setToastKey] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
 
   const listRef = useRef(null);
 
@@ -60,9 +63,10 @@ export default function ThreadScreen({ route, navigation }) {
 
   const loadMessages = useCallback(async () => {
     try {
-      const data = await getMessages(threadId);
+      const { messages: data, has_more } = await getMessages(threadId);
       setMessages(data);
-    } catch (err) {
+      setHasMore(has_more);
+    } catch {
       showToast('Could not load messages. Please try again.');
     }
   }, [threadId]);
@@ -70,7 +74,21 @@ export default function ThreadScreen({ route, navigation }) {
   useFocusEffect(
     useCallback(() => {
       loadMessages();
-    }, [loadMessages])
+      const interval = setInterval(async () => {
+        try {
+          const { messages: latest } = await getMessages(threadId);
+          setMessages(prev => {
+            const existingIds = new Set(prev.map(m => m.id));
+            const newOnes = latest.filter(m => !existingIds.has(m.id));
+            if (newOnes.length === 0) return prev;
+            return [...prev, ...newOnes];
+          });
+        } catch {
+          // silent — poll failure should not disrupt the UI
+        }
+      }, 5000);
+      return () => clearInterval(interval);
+    }, [threadId])
   );
 
   useEffect(() => {
@@ -80,6 +98,25 @@ export default function ThreadScreen({ route, navigation }) {
       }, 80);
     }
   }, [messages]);
+
+  async function loadOlderMessages() {
+    if (!hasMore || loadingOlder || messages.length === 0) return;
+    setLoadingOlder(true);
+    try {
+      const oldest = messages[0];
+      const { messages: older, has_more } = await getMessages(threadId, { before: oldest.id });
+      setMessages(prev => {
+        const existingIds = new Set(prev.map(m => m.id));
+        const newOnes = older.filter(m => !existingIds.has(m.id));
+        return [...newOnes, ...prev];
+      });
+      setHasMore(has_more);
+    } catch {
+      // silent — user can scroll again to retry
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
 
   async function handleSend() {
     const text = inputText.trim();
@@ -198,6 +235,13 @@ export default function ThreadScreen({ route, navigation }) {
         renderItem={renderMessage}
         contentContainerStyle={styles.list}
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+        onEndReached={loadOlderMessages}
+        onEndReachedThreshold={0.1}
+        ListHeaderComponent={
+          loadingOlder
+            ? <ActivityIndicator size="small" color="#6C47FF" style={{ paddingVertical: 8 }} />
+            : null
+        }
       />
 
       <View style={styles.inputBar}>

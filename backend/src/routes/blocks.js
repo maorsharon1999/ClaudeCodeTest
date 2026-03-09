@@ -1,13 +1,23 @@
 'use strict';
-const express = require('express');
+const express    = require('express');
+const rateLimit  = require('express-rate-limit');
 const { authRequired } = require('../middleware/auth');
 const { blockUser, unblockUser } = require('../services/blockReportService');
 
 const router = express.Router();
 router.use(authRequired);
 
+const blockLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => req.userId,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMIT', message: 'Too many block actions. Try again later.' } },
+});
+
 // POST / — block a user
-router.post('/', async (req, res, next) => {
+router.post('/', blockLimiter, async (req, res, next) => {
   try {
     const { blocked_id } = req.body;
     await blockUser(req.userId, blocked_id);
@@ -15,6 +25,7 @@ router.post('/', async (req, res, next) => {
   } catch (err) {
     if (err.code === 'VALIDATION_ERROR') return res.status(400).json({ error: { code: err.code, message: err.message } });
     if (err.code === 'FORBIDDEN') return res.status(403).json({ error: { code: err.code, message: err.message } });
+    if (err.code === 'USER_NOT_FOUND') return res.status(404).json({ error: { code: err.code, message: err.message } });
     if (err.code === 'ALREADY_BLOCKED') return res.status(409).json({ error: { code: err.code, message: err.message } });
     next(err);
   }
