@@ -31,7 +31,7 @@ function Toast({ message, visible }) {
   );
 }
 
-export default function SignalsScreen() {
+export default function SignalsScreen({ navigation }) {
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -154,6 +154,14 @@ export default function SignalsScreen() {
           <ProximityBadge bucket={item.proximity_bucket} />
         </View>
         <Text style={styles.matchedLabel}>Matched</Text>
+        <TouchableOpacity
+          style={styles.chatBtn}
+          onPress={() => navigation.navigate('Chats')}
+          accessibilityRole="button"
+          accessibilityLabel="Open chat"
+        >
+          <Text style={styles.chatBtnText}>Open Chat</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -278,6 +286,15 @@ const styles = StyleSheet.create({
   },
   declineBtnText: { color: '#333', fontWeight: '600', fontSize: 14 },
   matchedLabel: { marginTop: 6, fontSize: 13, fontWeight: '700', color: '#4CAF50' },
+  chatBtn: {
+    marginTop: 8,
+    backgroundColor: '#FF6C47',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    alignSelf: 'flex-start',
+  },
+  chatBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
   waitingLabel: { marginTop: 6, fontSize: 13, fontWeight: '600', color: '#888' },
   badge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3 },
   badgeNearby: { backgroundColor: '#EDE9FF' },

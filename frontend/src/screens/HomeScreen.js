@@ -130,6 +130,15 @@ export default function HomeScreen({ navigation }) {
       </TouchableOpacity>
 
       <TouchableOpacity
+        style={homeStyles.chatsBtn}
+        onPress={() => navigation.navigate('Chats')}
+        accessibilityRole="button"
+        accessibilityLabel="View chats"
+      >
+        <Text style={homeStyles.chatsBtnText}>Chats</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
         style={homeStyles.discoverBtn}
         onPress={() => navigation.navigate('Discovery')}
         accessibilityRole="button"
@@ -196,6 +205,14 @@ const homeStyles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   signalsBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  chatsBtn: {
+    marginTop: 12,
+    backgroundColor: '#FF6C47',
+    borderRadius: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+  },
+  chatsBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   discoverBtn: {
     marginTop: 12,
     backgroundColor: '#6C47FF',

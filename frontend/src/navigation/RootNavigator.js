@@ -11,6 +11,8 @@ import HomeScreen from '../screens/HomeScreen';
 import ProfileEditScreen from '../screens/ProfileEditScreen';
 import DiscoveryScreen from '../screens/DiscoveryScreen';
 import SignalsScreen from '../screens/SignalsScreen';
+import ChatsScreen from '../screens/ChatsScreen';
+import ThreadScreen from '../screens/ThreadScreen';
 
 const AuthStack = createNativeStackNavigator();
 const AppStack = createNativeStackNavigator();
@@ -46,6 +48,16 @@ function AppNavigator() {
         name="Signals"
         component={SignalsScreen}
         options={{ headerShown: true, title: 'Signals' }}
+      />
+      <AppStack.Screen
+        name="Chats"
+        component={ChatsScreen}
+        options={{ headerShown: true, title: 'Chats' }}
+      />
+      <AppStack.Screen
+        name="Thread"
+        component={ThreadScreen}
+        options={({ route }) => ({ headerShown: true, title: route.params?.displayName || 'Chat' })}
       />
     </AppStack.Navigator>
   );
