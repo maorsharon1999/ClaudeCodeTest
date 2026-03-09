@@ -101,7 +101,12 @@ function WebDatePicker({ value, onChange, hasError, maxDate }) {
   );
 }
 
-const GENDER_OPTIONS = ['Man', 'Woman', 'Non-binary', 'Prefer not to say'];
+const GENDER_OPTIONS = [
+  { label: 'Man', value: 'man' },
+  { label: 'Woman', value: 'woman' },
+  { label: 'Non-binary', value: 'nonbinary' },
+  { label: 'Prefer not to say', value: 'other' },
+];
 const LOOKING_FOR_OPTIONS = ['Friends', 'Dates', 'Networking', 'Anything'];
 const MIN_AGE_YEARS = 18;
 
@@ -256,18 +261,18 @@ export function ProfileForm({ initialValues = {}, onSave, saving }) {
       <View style={styles.optionRow}>
         {GENDER_OPTIONS.map((opt) => (
           <TouchableOpacity
-            key={opt}
-            style={[styles.optionChip, gender === opt && styles.optionChipActive]}
-            onPress={() => setGender(gender === opt ? '' : opt)}
+            key={opt.value}
+            style={[styles.optionChip, gender === opt.value && styles.optionChipActive]}
+            onPress={() => setGender(gender === opt.value ? '' : opt.value)}
             accessibilityRole="button"
           >
             <Text
               style={[
                 styles.optionChipText,
-                gender === opt && styles.optionChipTextActive,
+                gender === opt.value && styles.optionChipTextActive,
               ]}
             >
-              {opt}
+              {opt.label}
             </Text>
           </TouchableOpacity>
         ))}
