@@ -72,8 +72,8 @@ async function getNearby(userId) {
         AND vs.state = 'visible'
         AND ul.recorded_at > NOW() - INTERVAL '30 minutes'
         -- Bilateral hard filters (skipped when caller has no profile data)
-        AND ($5 IS NULL OR $5 = 'everyone' OR p.gender = $5)
-        AND ($4 IS NULL OR p.looking_for = 'everyone' OR p.looking_for = $4)
+        AND ($5::text IS NULL OR $5::text = 'everyone' OR p.gender = $5::text)
+        AND ($4::text IS NULL OR p.looking_for = 'everyone' OR p.looking_for = $4::text)
     ),
     bucketed AS (
       SELECT
@@ -108,9 +108,9 @@ async function getNearby(userId) {
               ELSE 0
             END
           + CASE
-              WHEN $4 IS NULL OR $5 IS NULL THEN 0
-              WHEN ($5 = 'everyone' OR gender = $5)
-               AND (candidate_looking_for = 'everyone' OR candidate_looking_for = $4) THEN 2
+              WHEN $4::text IS NULL OR $5::text IS NULL THEN 0
+              WHEN ($5::text = 'everyone' OR gender = $5::text)
+               AND (candidate_looking_for = 'everyone' OR candidate_looking_for = $4::text) THEN 2
               ELSE 0
             END
         ) AS score
@@ -120,7 +120,7 @@ async function getNearby(userId) {
     FROM scored
     ORDER BY score DESC, user_id ASC
     LIMIT 20`,
-    [userId, callerLat, callerLng, callerGender, callerLookingFor]
+    [userId, callerLat, callerLng, callerGender ?? null, callerLookingFor ?? null]
   );
 
   // Strip score and apply defensive JS cap before returning

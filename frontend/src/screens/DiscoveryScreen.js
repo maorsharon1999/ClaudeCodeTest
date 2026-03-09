@@ -71,9 +71,7 @@ export default function DiscoveryScreen() {
         // non-fatal: leave signalledIds as-is
       }
     } catch (err) {
-      const msg = err?.message || 'unknown';
-      const status = err?.response?.status || '';
-      setError(`Error: ${status} ${msg}`);
+      setError('Could not load nearby users. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
