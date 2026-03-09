@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getMessages, sendMessage, blockUser, reportUser } from '../api/chat';
 
@@ -47,6 +48,7 @@ function formatTime(isoString) {
 export default function ThreadScreen({ route, navigation }) {
   const { threadId, displayName, otherUserId } = route.params || {};
   const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
 
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -227,8 +229,8 @@ export default function ThreadScreen({ route, navigation }) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      behavior="padding"
+      keyboardVerticalOffset={headerHeight}
     >
       <FlatList
         ref={listRef}
