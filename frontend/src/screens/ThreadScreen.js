@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getMessages, sendMessage, blockUser, reportUser } from '../api/chat';
 
 function Toast({ message, visible }) {
@@ -45,6 +46,7 @@ function formatTime(isoString) {
 
 export default function ThreadScreen({ route, navigation }) {
   const { threadId, displayName, otherUserId } = route.params || {};
+  const insets = useSafeAreaInsets();
 
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -244,7 +246,7 @@ export default function ThreadScreen({ route, navigation }) {
         }
       />
 
-      <View style={styles.inputBar}>
+      <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
         <TextInput
           style={styles.input}
           value={inputText}
