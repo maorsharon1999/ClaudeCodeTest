@@ -6,14 +6,13 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
   Platform,
+  Keyboard,
   Alert,
   Animated,
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useHeaderHeight } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getMessages, sendMessage, blockUser, reportUser } from '../api/chat';
 
@@ -48,7 +47,13 @@ function formatTime(isoString) {
 export default function ThreadScreen({ route, navigation }) {
   const { threadId, displayName, otherUserId } = route.params || {};
   const insets = useSafeAreaInsets();
-  const headerHeight = useHeaderHeight();
+  const [kbHeight, setKbHeight] = useState(0);
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setKbHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKbHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -227,11 +232,7 @@ export default function ThreadScreen({ route, navigation }) {
   const canSend = inputText.trim().length > 0 && !sending;
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior="padding"
-      keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
-    >
+    <View style={[styles.container, { marginBottom: kbHeight }]}>
       <FlatList
         ref={listRef}
         data={messages}
@@ -248,7 +249,7 @@ export default function ThreadScreen({ route, navigation }) {
         }
       />
 
-      <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+      <View style={[styles.inputBar, { paddingBottom: kbHeight > 0 ? 8 : Math.max(insets.bottom, 8) }]}>
         <TextInput
           style={styles.input}
           value={inputText}
@@ -273,7 +274,7 @@ export default function ThreadScreen({ route, navigation }) {
       </View>
 
       <Toast key={toastKey} message={toastMsg} visible={!!toastMsg} />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
