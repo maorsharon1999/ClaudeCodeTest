@@ -99,7 +99,7 @@ async function sendSignal(senderId, recipientId) {
   const insertResult = await pool.query(
     `INSERT INTO signals (sender_id, recipient_id, proximity_bucket)
      VALUES ($1, $2, $3)
-     RETURNING id, sender_id, recipient_id, state, proximity_bucket, created_at`,
+     RETURNING id, state, proximity_bucket, created_at`,
     [senderId, recipientId, proximity_bucket]
   );
 
@@ -163,6 +163,7 @@ async function getIncoming(recipientId) {
        p.photos
      FROM signals s
      JOIN profiles p ON p.user_id = s.sender_id
+     JOIN visibility_states vs ON vs.user_id = s.sender_id AND vs.state = 'visible'
      WHERE s.recipient_id = $1
        AND s.state = 'pending'
      ORDER BY s.created_at DESC`,

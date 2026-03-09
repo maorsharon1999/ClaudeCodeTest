@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 import { setVisibility } from '../api/profile';
 import { useAuth } from '../context/AuthContext';
 import { getIncomingSignals } from '../api/signals';
+import { useFocusEffect } from '@react-navigation/native';
 
 // Reset server-side visibility to invisible on every new session (privacy invariant)
 async function resetVisibilityOnMount() {
@@ -46,9 +47,11 @@ export default function HomeScreen({ navigation }) {
   const [signalCount, setSignalCount] = useState(0);
 
   useEffect(() => { resetVisibilityOnMount(); }, []);
-  useEffect(() => {
-    getIncomingSignals().then((s) => setSignalCount(s.length)).catch(() => {});
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      getIncomingSignals().then((s) => setSignalCount(s.length)).catch(() => {});
+    }, [])
+  );
 
   function showToast(msg) {
     setToastMsg(msg);

@@ -76,8 +76,6 @@ jest.mock('../db/pool', () => ({
       return {
         rows: [{
           id: SIGNAL_ID,
-          sender_id: TEST_USER_ID,
-          recipient_id: RECIPIENT_USER_ID,
           state: 'pending',
           proximity_bucket: 'nearby',
           created_at: new Date().toISOString(),
@@ -114,9 +112,9 @@ jest.mock('../db/pool', () => ({
       };
     }
 
-    // getIncoming: JOIN profiles on sender_id
+    // getIncoming: JOIN profiles on sender_id (also joins visibility_states to filter invisible senders)
     if (sql.includes('FROM signals s') && sql.includes('JOIN profiles p ON p.user_id = s.sender_id')) {
-      if (mockMode === 'no_incoming') {
+      if (mockMode === 'no_incoming' || mockMode === 'sender_invisible_incoming') {
         return { rows: [] };
       }
       return {
@@ -295,6 +293,16 @@ describe('POST /api/v1/signals', () => {
     expect(res.body.signal.proximity_bucket).toBe('nearby');
   });
 
+  it('POST /signals response does not expose sender_id or recipient_id', async () => {
+    const res = await request(app)
+      .post('/api/v1/signals')
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .send({ recipient_id: RECIPIENT_USER_ID });
+    expect(res.status).toBe(201);
+    expect(res.body.signal).not.toHaveProperty('sender_id');
+    expect(res.body.signal).not.toHaveProperty('recipient_id');
+  });
+
   it('returns 429 RATE_LIMIT after exceeding 20 signals per hour', async () => {
     // Use a dedicated user so other tests are not affected by rate limiter state.
     // The limiter fires after 20 requests; send 21 and assert the last is 429.
@@ -391,6 +399,15 @@ describe('GET /api/v1/signals/incoming', () => {
 
   it('returns 200 { signals: [] } when none', async () => {
     mockMode = 'no_incoming';
+    const res = await request(app)
+      .get('/api/v1/signals/incoming')
+      .set('Authorization', `Bearer ${makeAccessToken()}`);
+    expect(res.status).toBe(200);
+    expect(res.body.signals).toEqual([]);
+  });
+
+  it('returns 200 { signals: [] } when sender has gone invisible', async () => {
+    mockMode = 'sender_invisible_incoming';
     const res = await request(app)
       .get('/api/v1/signals/incoming')
       .set('Authorization', `Bearer ${makeAccessToken()}`);

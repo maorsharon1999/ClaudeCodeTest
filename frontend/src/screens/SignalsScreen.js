@@ -70,10 +70,10 @@ export default function SignalsScreen() {
   async function handleApprove(signal) {
     const prevIncoming = incoming;
     const prevOutgoing = outgoing;
-    setIncoming((prev) => prev.filter((s) => s.signal_id !== signal.signal_id));
+    setIncoming((prev) => prev.filter((s) => s.id !== signal.id));
     setOutgoing((prev) => [...prev, { ...signal, state: 'approved', recipient: signal.sender }]);
     try {
-      await respondSignal(signal.signal_id, 'approve');
+      await respondSignal(signal.id, 'approve');
     } catch (err) {
       setIncoming(prevIncoming);
       setOutgoing(prevOutgoing);
@@ -83,9 +83,9 @@ export default function SignalsScreen() {
 
   async function handleDecline(signal) {
     const prevIncoming = incoming;
-    setIncoming((prev) => prev.filter((s) => s.signal_id !== signal.signal_id));
+    setIncoming((prev) => prev.filter((s) => s.id !== signal.id));
     try {
-      await respondSignal(signal.signal_id, 'decline');
+      await respondSignal(signal.id, 'decline');
     } catch (err) {
       setIncoming(prevIncoming);
       showToast('Could not decline. Try again.');
@@ -193,7 +193,7 @@ export default function SignalsScreen() {
           ) : (
             <FlatList
               data={incoming}
-              keyExtractor={(item) => item.signal_id}
+              keyExtractor={(item) => item.id}
               renderItem={renderIncomingCard}
               scrollEnabled={false}
             />
@@ -206,7 +206,7 @@ export default function SignalsScreen() {
           <Text style={styles.sectionTitle}>Matched</Text>
           <FlatList
             data={matched}
-            keyExtractor={(item) => item.signal_id}
+            keyExtractor={(item) => item.id}
             renderItem={renderMatchedCard}
             scrollEnabled={false}
           />
@@ -218,7 +218,7 @@ export default function SignalsScreen() {
           <Text style={styles.sectionTitle}>Pending</Text>
           <FlatList
             data={pending}
-            keyExtractor={(item) => item.signal_id}
+            keyExtractor={(item) => item.id}
             renderItem={renderPendingCard}
             scrollEnabled={false}
           />
