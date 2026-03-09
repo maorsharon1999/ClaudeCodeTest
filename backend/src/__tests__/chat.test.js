@@ -89,6 +89,12 @@ jest.mock('../db/pool', () => ({
       };
     }
 
+    // Relationship check for block/report (approved signal between the pair)
+    if (sql.includes('FROM signals') && sql.includes("state = 'approved'") && sql.includes('LIMIT 1')) {
+      if (mockMode === 'no_relationship') return { rows: [] };
+      return { rows: [{ '1': 1 }] };
+    }
+
     // Block insert
     if (sql.includes('INSERT INTO blocks')) {
       if (mockMode === 'already_blocked') {
@@ -354,6 +360,16 @@ describe('POST /api/v1/blocks', () => {
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
 
+  it('returns 403 FORBIDDEN when no approved signal exists between the pair', async () => {
+    mockMode = 'no_relationship';
+    const res = await request(app)
+      .post('/api/v1/blocks')
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .send({ blocked_id: OTHER_ID });
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+  });
+
   it('returns 409 ALREADY_BLOCKED when already blocked', async () => {
     mockMode = 'already_blocked';
     const res = await request(app)
@@ -446,6 +462,16 @@ describe('POST /api/v1/reports', () => {
       .send({ reported_id: OTHER_ID, reason: 'x'.repeat(501) });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 403 FORBIDDEN when no approved signal exists between the pair', async () => {
+    mockMode = 'no_relationship';
+    const res = await request(app)
+      .post('/api/v1/reports')
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .send({ reported_id: OTHER_ID, reason: 'spam' });
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
   it('returns 201 { reported: true } on success', async () => {

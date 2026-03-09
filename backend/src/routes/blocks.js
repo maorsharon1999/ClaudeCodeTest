@@ -14,6 +14,7 @@ router.post('/', async (req, res, next) => {
     return res.status(201).json({ blocked: true });
   } catch (err) {
     if (err.code === 'VALIDATION_ERROR') return res.status(400).json({ error: { code: err.code, message: err.message } });
+    if (err.code === 'FORBIDDEN') return res.status(403).json({ error: { code: err.code, message: err.message } });
     if (err.code === 'ALREADY_BLOCKED') return res.status(409).json({ error: { code: err.code, message: err.message } });
     next(err);
   }

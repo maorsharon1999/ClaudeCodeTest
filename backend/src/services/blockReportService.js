@@ -15,6 +15,17 @@ async function blockUser(blockerId, blockedId) {
   if (blockerId === blockedId) {
     throw makeError(400, 'VALIDATION_ERROR', 'Cannot block yourself.');
   }
+  // Require an approved signal or existing thread between the pair
+  const relResult = await pool.query(
+    `SELECT 1 FROM signals
+     WHERE ((sender_id = $1 AND recipient_id = $2) OR (sender_id = $2 AND recipient_id = $1))
+       AND state = 'approved'
+     LIMIT 1`,
+    [blockerId, blockedId]
+  );
+  if (relResult.rows.length === 0) {
+    throw makeError(403, 'FORBIDDEN', 'You can only block users you have matched with.');
+  }
   try {
     await pool.query(
       'INSERT INTO blocks (blocker_id, blocked_id) VALUES ($1, $2)',
@@ -50,6 +61,17 @@ async function reportUser(reporterId, reportedId, reason) {
   }
   if (reason.length > 500) {
     throw makeError(400, 'VALIDATION_ERROR', 'reason must be 500 characters or fewer.');
+  }
+  // Require an approved signal between the pair
+  const relResult = await pool.query(
+    `SELECT 1 FROM signals
+     WHERE ((sender_id = $1 AND recipient_id = $2) OR (sender_id = $2 AND recipient_id = $1))
+       AND state = 'approved'
+     LIMIT 1`,
+    [reporterId, reportedId]
+  );
+  if (relResult.rows.length === 0) {
+    throw makeError(403, 'FORBIDDEN', 'You can only report users you have matched with.');
   }
   await pool.query(
     'INSERT INTO reports (reporter_id, reported_id, reason) VALUES ($1, $2, $3)',

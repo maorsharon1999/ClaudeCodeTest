@@ -49,10 +49,9 @@ export default function ChatsScreen({ navigation }) {
     const other = item.other_user || {};
     const name = other.display_name || '';
     const age = other.age ? ', ' + other.age : '';
-    const preview = item.last_message_body
-      ? item.last_message_body.slice(0, 60) + (item.last_message_body.length > 60 ? '…' : '')
-      : '';
-    const time = relativeTime(item.last_message_at);
+    const msgBody = item.last_message?.body || '';
+    const preview = msgBody ? msgBody.slice(0, 60) + (msgBody.length > 60 ? '…' : '') : '';
+    const time = relativeTime(item.last_message?.sent_at);
 
     return (
       <TouchableOpacity

@@ -16,8 +16,18 @@ const messageSendLimiter = rateLimit({
   message: { error: { code: 'RATE_LIMIT', message: 'Too many messages. Slow down.' } },
 });
 
+// Per-user: max 60 GET requests per minute (covers polling)
+const threadReadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  keyGenerator: (req) => req.userId,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMIT', message: 'Too many requests. Slow down.' } },
+});
+
 // GET / — list threads
-router.get('/', async (req, res, next) => {
+router.get('/', threadReadLimiter, async (req, res, next) => {
   try {
     const threads = await getThreadsForUser(req.userId);
     return res.status(200).json({ threads });
@@ -27,7 +37,7 @@ router.get('/', async (req, res, next) => {
 });
 
 // GET /:thread_id/messages
-router.get('/:thread_id/messages', async (req, res, next) => {
+router.get('/:thread_id/messages', threadReadLimiter, async (req, res, next) => {
   try {
     const messages = await getMessages(req.params.thread_id, req.userId);
     return res.status(200).json({ messages });

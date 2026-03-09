@@ -14,6 +14,7 @@ router.post('/', async (req, res, next) => {
     return res.status(201).json({ reported: true });
   } catch (err) {
     if (err.code === 'VALIDATION_ERROR') return res.status(400).json({ error: { code: err.code, message: err.message } });
+    if (err.code === 'FORBIDDEN') return res.status(403).json({ error: { code: err.code, message: err.message } });
     next(err);
   }
 });

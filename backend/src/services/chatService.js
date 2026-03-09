@@ -61,7 +61,12 @@ async function getThreadsForUser(userId) {
        ORDER BY sent_at DESC
        LIMIT 1
      ) lm ON true
-     WHERE t.user_a_id = $1 OR t.user_b_id = $1
+     WHERE (t.user_a_id = $1 OR t.user_b_id = $1)
+       AND NOT EXISTS (
+         SELECT 1 FROM blocks b
+         WHERE (b.blocker_id = $1 AND b.blocked_id = CASE WHEN t.user_a_id = $1 THEN t.user_b_id ELSE t.user_a_id END)
+            OR (b.blocker_id = CASE WHEN t.user_a_id = $1 THEN t.user_b_id ELSE t.user_a_id END AND b.blocked_id = $1)
+       )
      ORDER BY COALESCE(lm.sent_at, t.created_at) DESC`,
     [userId]
   );
