@@ -316,16 +316,18 @@ export function ProfileForm({ initialValues = {}, onSave, saving }) {
 export default function ProfileSetupScreen() {
   const { markProfileComplete } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   async function handleSave(data) {
     setSaving(true);
+    setSaveError('');
     try {
       await updateProfile(data);
       markProfileComplete();
     } catch (err) {
       const message =
         err.response?.data?.error?.message || 'Failed to save profile. Please try again.';
-      Alert.alert('Error', message);
+      setSaveError(message);
     } finally {
       setSaving(false);
     }
@@ -335,6 +337,9 @@ export default function ProfileSetupScreen() {
     <View style={styles.flex}>
       <Text style={styles.heading}>Set Up Your Profile</Text>
       <Text style={styles.subheading}>Tell us a bit about yourself.</Text>
+      {saveError ? (
+        <Text style={styles.saveError}>{saveError}</Text>
+      ) : null}
       <ProfileForm onSave={handleSave} saving={saving} />
     </View>
   );
@@ -355,6 +360,12 @@ const styles = StyleSheet.create({
     color: '#666',
     paddingHorizontal: 24,
     marginBottom: 8,
+  },
+  saveError: {
+    color: '#E53935',
+    fontSize: 14,
+    paddingHorizontal: 24,
+    marginBottom: 4,
   },
   container: { padding: 24, paddingBottom: 48 },
   label: {
