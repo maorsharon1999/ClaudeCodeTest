@@ -5,6 +5,7 @@ process.env.JWT_ACCESS_SECRET  = 'test-access-secret-long-enough-32chars!';
 process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-long-enough-32!!';
 process.env.PHONE_HMAC_SECRET  = 'test-phone-hmac-secret-long-enough!!!';
 process.env.ADMIN_SECRET       = 'test-admin-secret-long-enough-32chars!';
+process.env.STORAGE_BASE_URL   = 'http://localhost:3000';
 
 const request = require('supertest');
 const jwt     = require('jsonwebtoken');
@@ -637,10 +638,13 @@ describe('POST /api/v1/threads/:id/voice-notes', () => {
   });
 
   it('returns 201 with message containing voice_note_url and voice_note_duration_s on success', async () => {
+    // Build a minimal 12-byte buffer with 'ftyp' at bytes 4-7 to pass the magic-bytes check.
+    const m4aMagic = Buffer.alloc(12, 0);
+    m4aMagic.write('ftyp', 4, 'ascii');
     const res = await request(app)
       .post(`/api/v1/threads/${THREAD_ID}/voice-notes`)
       .set('Authorization', `Bearer ${makeAccessToken()}`)
-      .attach('audio', Buffer.from('fake-audio'), { filename: 'note.m4a', contentType: 'audio/m4a' })
+      .attach('audio', m4aMagic, { filename: 'note.m4a', contentType: 'audio/m4a' })
       .field('duration_s', '10');
     expect(res.status).toBe(201);
     expect(res.body.message).toHaveProperty('voice_note_url');

@@ -101,7 +101,7 @@ router.post('/:thread_id/voice-notes', messageSendLimiter, voiceUpload.single('a
       return res.status(400).json({ error: { code: 'NO_FILE', message: 'Audio file is required.' } });
     }
 
-    if (!ALLOWED_VOICE_MIMETYPES.includes(req.file.mimetype) || !isAudioContainer(req.file.path)) {
+    if (!ALLOWED_VOICE_MIMETYPES.includes(req.file.mimetype)) {
       cleanup();
       return res.status(400).json({ error: { code: 'INVALID_TYPE', message: 'Audio must be m4a, mp4, or aac.' } });
     }
@@ -112,7 +112,12 @@ router.post('/:thread_id/voice-notes', messageSendLimiter, voiceUpload.single('a
       return res.status(400).json({ error: { code: 'INVALID_DURATION', message: 'duration_s must be between 1 and 60.' } });
     }
 
-    const url = `${config.storageBaseUrl}/uploads/voice/${req.file.filename}`;
+    if (!isAudioContainer(req.file.path)) {
+      cleanup();
+      return res.status(400).json({ error: { code: 'INVALID_TYPE', message: 'Audio must be m4a, mp4, or aac.' } });
+    }
+
+    const url = `${config.storageBaseUrl}/voice-notes/${req.file.filename}`;
     const message = await addVoiceNote(req.userId, req.params.thread_id, url, duration_s);
     return res.status(201).json({ message });
   } catch (err) {

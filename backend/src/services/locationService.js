@@ -21,7 +21,7 @@ function lcgStep(seed) {
 // position drifts slowly rather than jumping every render, but exact
 // coordinates are never exposed.
 function jitterCoords(userId, lat, lng, bucket, recordedAt) {
-  const timeBucket = Math.floor(recordedAt.getTime() / 300000);
+  const timeBucket = Math.floor(new Date(recordedAt).getTime() / 300000);
   const seed = djb2(userId + String(timeBucket));
 
   const step1 = lcgStep(seed);

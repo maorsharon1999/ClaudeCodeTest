@@ -14,6 +14,7 @@ const locationRoutes   = require('./routes/location');
 const discoveryRoutes  = require('./routes/discovery');
 const signalRoutes     = require('./routes/signals');
 const threadsRoutes    = require('./routes/threads');
+const voiceRoutes      = require('./routes/voice');
 const blocksRoutes     = require('./routes/blocks');
 const reportsRoutes    = require('./routes/reports');
 const internalRoutes   = require('./routes/internal');
@@ -27,8 +28,8 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+// Profile photos are served publicly (acceptable for MVP); voice notes require auth (see /voice-notes route)
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
-app.use('/uploads/voice', express.static(path.join(__dirname, '..', 'uploads', 'voice')));
 
 // Health check
 app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
@@ -41,6 +42,7 @@ app.use('/api/v1/location',   locationRoutes);
 app.use('/api/v1/discovery',  discoveryRoutes);
 app.use('/api/v1/signals',    signalRoutes);
 app.use('/api/v1/threads',   threadsRoutes);
+app.use('/voice-notes',      voiceRoutes);
 app.use('/api/v1/blocks',    blocksRoutes);
 app.use('/api/v1/reports',   reportsRoutes);
 app.use('/internal',         internalRoutes);
