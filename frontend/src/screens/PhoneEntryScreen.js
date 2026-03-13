@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { requestOtp } from '../api/auth';
+import { theme } from '../theme';
 
 const E164_REGEX = /^\+[1-9]\d{7,14}$/;
 
@@ -17,6 +19,16 @@ export default function PhoneEntryScreen({ navigation }) {
   const [phone, setPhone] = useState('');
   const [status, setStatus] = useState('idle'); // idle | submitting | error
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Entrance animation
+  const enterAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(enterAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+  }, []);
+  const enterStyle = {
+    opacity: enterAnim,
+    transform: [{ translateY: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+  };
 
   function validate(value) {
     if (!E164_REGEX.test(value)) {
@@ -59,14 +71,14 @@ export default function PhoneEntryScreen({ navigation }) {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.container}>
+      <Animated.View style={[styles.container, enterStyle]}>
         <Text style={styles.title}>Bubble</Text>
         <Text style={styles.subtitle}>Enter your phone number to get started</Text>
 
         <TextInput
           style={[styles.input, status === 'error' && styles.inputError]}
           placeholder="+14155552671"
-          placeholderTextColor="#aaa"
+          placeholderTextColor={theme.colors.textFaint}
           keyboardType="phone-pad"
           autoCorrect={false}
           autoComplete="tel"
@@ -104,53 +116,52 @@ export default function PhoneEntryScreen({ navigation }) {
         <Text style={styles.hint}>
           We'll send a 6-digit code via SMS. Standard rates may apply.
         </Text>
-      </View>
+      </Animated.View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
+  flex: { flex: 1, backgroundColor: theme.colors.bgBase },
   container: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 28,
   },
   title: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#6C47FF',
+    ...theme.typography.displayMd,
+    color: theme.colors.brand,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#555',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     marginBottom: 36,
   },
   input: {
     height: 52,
     borderWidth: 1.5,
-    borderColor: '#ddd',
-    borderRadius: 10,
+    borderColor: theme.colors.borderDefault,
+    borderRadius: theme.radii.md,
     paddingHorizontal: 16,
     fontSize: 18,
-    color: '#111',
+    color: theme.colors.textPrimary,
     marginBottom: 8,
   },
   inputError: {
-    borderColor: '#E53935',
+    borderColor: theme.colors.error,
   },
   errorText: {
-    color: '#E53935',
+    color: theme.colors.error,
     fontSize: 13,
     marginBottom: 12,
   },
   button: {
     height: 52,
-    backgroundColor: '#6C47FF',
-    borderRadius: 10,
+    backgroundColor: theme.colors.brand,
+    borderRadius: theme.radii.md,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,

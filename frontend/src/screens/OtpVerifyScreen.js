@@ -8,9 +8,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { verifyOtp, requestOtp } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
+import { theme } from '../theme';
 
 const RESEND_SECONDS = 60;
 const CODE_LENGTH = 6;
@@ -26,6 +28,16 @@ export default function OtpVerifyScreen({ route, navigation }) {
   const [resending, setResending] = useState(false);
 
   const timerRef = useRef(null);
+
+  // Entrance animation
+  const enterAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(enterAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+  }, []);
+  const enterStyle = {
+    opacity: enterAnim,
+    transform: [{ translateY: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+  };
 
   // Start/restart countdown
   const startCountdown = useCallback(() => {
@@ -120,7 +132,7 @@ export default function OtpVerifyScreen({ route, navigation }) {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.container}>
+      <Animated.View style={[styles.container, enterStyle]}>
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
@@ -156,7 +168,7 @@ export default function OtpVerifyScreen({ route, navigation }) {
 
         {isVerifying && (
           <View style={styles.verifyingRow}>
-            <ActivityIndicator size="small" color="#6C47FF" />
+            <ActivityIndicator size="small" color={theme.colors.brand} />
             <Text style={styles.verifyingText}>Verifying…</Text>
           </View>
         )}
@@ -171,20 +183,20 @@ export default function OtpVerifyScreen({ route, navigation }) {
               <Text style={styles.resendActive}>Resend code</Text>
             </TouchableOpacity>
           ) : resending ? (
-            <ActivityIndicator size="small" color="#6C47FF" />
+            <ActivityIndicator size="small" color={theme.colors.brand} />
           ) : (
             <Text style={styles.resendCountdown}>
               Resend in {countdown}s
             </Text>
           )}
         </View>
-      </View>
+      </Animated.View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
+  flex: { flex: 1, backgroundColor: theme.colors.bgBase },
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -197,36 +209,36 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: 16,
-    color: '#6C47FF',
+    color: theme.colors.brand,
   },
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#111',
+    color: theme.colors.textPrimary,
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 15,
-    color: '#555',
+    color: theme.colors.textSecondary,
     marginBottom: 32,
     lineHeight: 22,
   },
   phone: {
     fontWeight: '600',
-    color: '#111',
+    color: theme.colors.textPrimary,
   },
   input: {
     height: 64,
     borderWidth: 1.5,
-    borderColor: '#ddd',
-    borderRadius: 12,
+    borderColor: theme.colors.borderDefault,
+    borderRadius: theme.radii.md,
     fontSize: 32,
-    color: '#111',
+    color: theme.colors.textPrimary,
     letterSpacing: 12,
     marginBottom: 8,
   },
   inputError: {
-    borderColor: '#E53935',
+    borderColor: theme.colors.error,
   },
   inputDisabled: {
     opacity: 0.6,
@@ -238,11 +250,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   verifyingText: {
-    color: '#6C47FF',
+    color: theme.colors.brand,
     fontSize: 14,
   },
   errorText: {
-    color: '#E53935',
+    color: theme.colors.error,
     fontSize: 13,
     marginBottom: 8,
   },
@@ -251,7 +263,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   resendActive: {
-    color: '#6C47FF',
+    color: theme.colors.brand,
     fontSize: 15,
     fontWeight: '600',
     textDecorationLine: 'underline',

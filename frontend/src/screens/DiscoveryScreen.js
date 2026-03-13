@@ -13,26 +13,8 @@ import {
 import * as Location from 'expo-location';
 import { updateLocation, getNearbyUsers } from '../api/discovery';
 import { sendSignal, getOutgoingSignals } from '../api/signals';
-
-function Toast({ message, visible }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.delay(2200),
-        Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [visible, message, opacity]);
-
-  return (
-    <Animated.View style={[toastStyles.toast, { opacity }]} pointerEvents="none">
-      <Text style={toastStyles.toastText}>{message}</Text>
-    </Animated.View>
-  );
-}
+import Toast from '../components/Toast';
+import { theme } from '../theme';
 
 export default function DiscoveryScreen() {
   const [users, setUsers] = useState([]);
@@ -44,6 +26,16 @@ export default function DiscoveryScreen() {
   const [signalledIds, setSignalledIds] = useState(new Set());
   const [toastMsg, setToastMsg] = useState('');
   const [toastKey, setToastKey] = useState(0);
+
+  // Entrance animation
+  const enterAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(enterAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+  }, []);
+  const enterStyle = {
+    opacity: enterAnim,
+    transform: [{ translateY: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+  };
 
   function showToast(msg) {
     setToastMsg(msg);
@@ -128,7 +120,7 @@ export default function DiscoveryScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, enterStyle]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Nearby</Text>
         <Text style={styles.headerSub}>Last updated: {formatTime(lastUpdated)}</Text>
@@ -136,7 +128,7 @@ export default function DiscoveryScreen() {
 
       {loading && users.length === 0 ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#6C47FF" />
+          <ActivityIndicator size="large" color={theme.colors.brand} />
         </View>
       ) : (
         <FlatList
@@ -147,15 +139,15 @@ export default function DiscoveryScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => refresh(true)}
-              colors={['#6C47FF']}
-              tintColor="#6C47FF"
+              colors={[theme.colors.brand]}
+              tintColor={theme.colors.brand}
             />
           }
           ListEmptyComponent={
             <Text style={styles.emptyText}>No one nearby right now</Text>
           }
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <View style={[styles.card, theme.shadows.card]}>
               <View style={styles.cardHeader}>
                 <Text style={styles.cardName}>
                   {item.display_name}, {item.age}
@@ -195,51 +187,51 @@ export default function DiscoveryScreen() {
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       <Toast key={toastKey} message={toastMsg} visible={!!toastMsg} />
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: theme.colors.bgBase },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.bgDim,
   },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#6C47FF' },
-  headerSub: { fontSize: 12, color: '#aaa', marginTop: 2 },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: theme.colors.brand },
+  headerSub: { fontSize: 12, color: theme.colors.textFaint, marginTop: 2 },
   list: { padding: 16 },
   emptyList: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  emptyText: { fontSize: 16, color: '#aaa', textAlign: 'center' },
+  emptyText: { fontSize: 16, color: theme.colors.textFaint, textAlign: 'center' },
   card: {
-    backgroundColor: '#fafafa',
-    borderRadius: 12,
+    backgroundColor: theme.colors.bgSubtle,
+    borderRadius: theme.radii.md,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#ebebeb',
+    borderColor: theme.colors.borderSubtle,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cardName: { fontSize: 17, fontWeight: '700', color: '#222' },
+  cardName: { fontSize: 17, fontWeight: '700', color: theme.colors.textBody },
   cardBio: { fontSize: 14, color: '#666', marginTop: 8, lineHeight: 20 },
   badge: {
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
-  badgeNearby: { backgroundColor: '#EDE9FF' },
-  badgeSameArea: { backgroundColor: '#f0f0f0' },
+  badgeNearby: { backgroundColor: theme.colors.badgePurpleBg },
+  badgeSameArea: { backgroundColor: theme.colors.bgDim },
   badgeText: { fontSize: 12, fontWeight: '600' },
-  badgeTextNearby: { color: '#6C47FF' },
-  badgeTextSameArea: { color: '#888' },
-  permissionTitle: { fontSize: 20, fontWeight: '700', color: '#222', marginBottom: 12, textAlign: 'center' },
+  badgeTextNearby: { color: theme.colors.brand },
+  badgeTextSameArea: { color: theme.colors.textMuted },
+  permissionTitle: { fontSize: 20, fontWeight: '700', color: theme.colors.textBody, marginBottom: 12, textAlign: 'center' },
   permissionBody: { fontSize: 15, color: '#666', textAlign: 'center', lineHeight: 22, marginBottom: 24 },
   settingsBtn: {
-    backgroundColor: '#6C47FF',
-    borderRadius: 24,
+    backgroundColor: theme.colors.brand,
+    borderRadius: theme.radii.pill,
     paddingVertical: 12,
     paddingHorizontal: 28,
   },
@@ -248,32 +240,17 @@ const styles = StyleSheet.create({
   signalBtn: {
     marginTop: 10,
     alignSelf: 'flex-start',
-    backgroundColor: '#6C47FF',
-    borderRadius: 20,
+    backgroundColor: theme.colors.brand,
+    borderRadius: theme.radii.pill,
     paddingVertical: 8,
     paddingHorizontal: 20,
   },
   signalBtnSent: {
-    backgroundColor: '#C7C7CC',
+    backgroundColor: theme.colors.disabled,
   },
   signalBtnText: {
     color: '#fff',
     fontWeight: '600',
     fontSize: 14,
   },
-});
-
-const toastStyles = StyleSheet.create({
-  toast: {
-    position: 'absolute',
-    bottom: 90,
-    left: 24,
-    right: 24,
-    backgroundColor: '#323232',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  toastText: { color: '#fff', fontSize: 14 },
 });

@@ -10,26 +10,8 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getIncomingSignals, getOutgoingSignals, respondSignal } from '../api/signals';
-
-function Toast({ message, visible }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.delay(2200),
-        Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [visible, message, opacity]);
-
-  return (
-    <Animated.View style={[toastStyles.toast, { opacity }]} pointerEvents="none">
-      <Text style={toastStyles.toastText}>{message}</Text>
-    </Animated.View>
-  );
-}
+import Toast from '../components/Toast';
+import { theme } from '../theme';
 
 export default function SignalsScreen({ navigation }) {
   const [incoming, setIncoming] = useState([]);
@@ -38,6 +20,16 @@ export default function SignalsScreen({ navigation }) {
   const [error, setError] = useState(null);
   const [toastMsg, setToastMsg] = useState('');
   const [toastKey, setToastKey] = useState(0);
+
+  // Entrance animation
+  const enterAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(enterAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+  }, []);
+  const enterStyle = {
+    opacity: enterAnim,
+    transform: [{ translateY: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+  };
 
   function showToast(msg) {
     setToastMsg(msg);
@@ -184,7 +176,7 @@ export default function SignalsScreen({ navigation }) {
   const showIncomingSection = incoming.length > 0 || loading;
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, enterStyle]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Signals</Text>
       </View>
@@ -195,7 +187,7 @@ export default function SignalsScreen({ navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Incoming</Text>
           {loading && incoming.length === 0 ? (
-            <ActivityIndicator size="small" color="#6C47FF" style={styles.spinner} />
+            <ActivityIndicator size="small" color={theme.colors.brand} style={styles.spinner} />
           ) : incoming.length === 0 ? (
             <Text style={styles.emptyText}>No new signals yet.</Text>
           ) : (
@@ -240,84 +232,69 @@ export default function SignalsScreen({ navigation }) {
       )}
 
       <Toast key={toastKey} message={toastMsg} visible={!!toastMsg} />
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: theme.colors.bgBase },
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.bgDim,
   },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#6C47FF' },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: theme.colors.brand },
   section: { paddingHorizontal: 16, paddingTop: 16 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#333', marginBottom: 10 },
   spinner: { marginVertical: 16 },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: theme.colors.bgBase,
+    borderRadius: theme.radii.md,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#ebebeb',
+    borderColor: theme.colors.borderSubtle,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cardName: { fontSize: 17, fontWeight: '700', color: '#222' },
+  cardName: { fontSize: 17, fontWeight: '700', color: theme.colors.textBody },
   cardBio: { fontSize: 14, color: '#666', marginTop: 8, lineHeight: 20 },
   actionRow: { flexDirection: 'row', marginTop: 12, gap: 10 },
   approveBtn: {
-    backgroundColor: '#4CAF50',
-    borderRadius: 8,
+    backgroundColor: theme.colors.success,
+    borderRadius: theme.radii.md,
     paddingVertical: 10,
     paddingHorizontal: 16,
   },
   approveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   declineBtn: {
-    backgroundColor: '#fff',
-    borderColor: '#ddd',
+    backgroundColor: theme.colors.bgBase,
+    borderColor: theme.colors.borderDefault,
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: theme.radii.md,
     paddingVertical: 10,
     paddingHorizontal: 16,
   },
   declineBtnText: { color: '#333', fontWeight: '600', fontSize: 14 },
-  matchedLabel: { marginTop: 6, fontSize: 13, fontWeight: '700', color: '#4CAF50' },
+  matchedLabel: { marginTop: 6, fontSize: 13, fontWeight: '700', color: theme.colors.success },
   chatBtn: {
     marginTop: 8,
-    backgroundColor: '#FF6C47',
-    borderRadius: 8,
+    backgroundColor: theme.colors.accent,
+    borderRadius: theme.radii.md,
     paddingVertical: 8,
     paddingHorizontal: 14,
     alignSelf: 'flex-start',
   },
   chatBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  waitingLabel: { marginTop: 6, fontSize: 13, fontWeight: '600', color: '#888' },
+  waitingLabel: { marginTop: 6, fontSize: 13, fontWeight: '600', color: theme.colors.textMuted },
   badge: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 3 },
-  badgeNearby: { backgroundColor: '#EDE9FF' },
-  badgeSameArea: { backgroundColor: '#f0f0f0' },
+  badgeNearby: { backgroundColor: theme.colors.badgePurpleBg },
+  badgeSameArea: { backgroundColor: theme.colors.bgDim },
   badgeText: { fontSize: 12, fontWeight: '600' },
-  badgeTextNearby: { color: '#6C47FF' },
-  badgeTextSameArea: { color: '#888' },
+  badgeTextNearby: { color: theme.colors.brand },
+  badgeTextSameArea: { color: theme.colors.textMuted },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  emptyText: { fontSize: 15, color: '#aaa', textAlign: 'center' },
+  emptyText: { fontSize: 15, color: theme.colors.textFaint, textAlign: 'center' },
   errorText: { color: '#c00', textAlign: 'center', padding: 12, fontSize: 13 },
-});
-
-const toastStyles = StyleSheet.create({
-  toast: {
-    position: 'absolute',
-    bottom: 90,
-    left: 24,
-    right: 24,
-    backgroundColor: '#323232',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  toastText: { color: '#fff', fontSize: 14 },
 });

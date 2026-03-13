@@ -12,30 +12,12 @@ import { setVisibility } from '../api/profile';
 import { useAuth } from '../context/AuthContext';
 import { getIncomingSignals } from '../api/signals';
 import { useFocusEffect } from '@react-navigation/native';
+import Toast from '../components/Toast';
+import { theme } from '../theme';
 
 // Reset server-side visibility to invisible on every new session (privacy invariant)
 async function resetVisibilityOnMount() {
   try { await setVisibility('invisible'); } catch { /* best-effort */ }
-}
-
-function Toast({ message, visible }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.delay(2200),
-        Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [visible, message, opacity]);
-
-  return (
-    <Animated.View style={[toastStyles.toast, { opacity }]} pointerEvents="none">
-      <Text style={toastStyles.toastText}>{message}</Text>
-    </Animated.View>
-  );
 }
 
 export default function HomeScreen({ navigation }) {
@@ -45,6 +27,69 @@ export default function HomeScreen({ navigation }) {
   const [toastMsg, setToastMsg] = useState('');
   const [toastKey, setToastKey] = useState(0);
   const [signalCount, setSignalCount] = useState(0);
+
+  // Entrance animation
+  const enterAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(enterAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+  }, []);
+  const enterStyle = {
+    opacity: enterAnim,
+    transform: [{ translateY: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+  };
+
+  // Orb color animation (useNativeDriver: false required for color interpolation)
+  const orbColor = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(orbColor, {
+      toValue: isVisible ? 1 : 0,
+      duration: 250,
+      useNativeDriver: false,
+    }).start();
+  }, [isVisible]);
+  const orbBg = orbColor.interpolate({
+    inputRange: [0, 1],
+    outputRange: [theme.colors.disabled, theme.colors.brand],
+  });
+
+  // Pulse ring animations
+  const ring1Scale = useRef(new Animated.Value(1)).current;
+  const ring1Opacity = useRef(new Animated.Value(0.6)).current;
+  const ring2Scale = useRef(new Animated.Value(1)).current;
+  const ring2Opacity = useRef(new Animated.Value(0.6)).current;
+  const ring1Anim = useRef(null);
+  const ring2Anim = useRef(null);
+
+  useEffect(() => {
+    if (isVisible) {
+      const makeRingLoop = (scale, opacity, delay) =>
+        Animated.loop(
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.parallel([
+              Animated.timing(scale, { toValue: 1.5, duration: 1800, useNativeDriver: true }),
+              Animated.timing(opacity, { toValue: 0, duration: 1800, useNativeDriver: true }),
+            ]),
+            Animated.parallel([
+              Animated.timing(scale, { toValue: 1, duration: 0, useNativeDriver: true }),
+              Animated.timing(opacity, { toValue: 0.6, duration: 0, useNativeDriver: true }),
+            ]),
+          ])
+        );
+
+      ring1Anim.current = makeRingLoop(ring1Scale, ring1Opacity, 0);
+      ring2Anim.current = makeRingLoop(ring2Scale, ring2Opacity, 700);
+      ring1Anim.current.start();
+      ring2Anim.current.start();
+    } else {
+      if (ring1Anim.current) ring1Anim.current.stop();
+      if (ring2Anim.current) ring2Anim.current.stop();
+      ring1Scale.setValue(1);
+      ring1Opacity.setValue(0);
+      ring2Scale.setValue(1);
+      ring2Opacity.setValue(0);
+    }
+  }, [isVisible]);
 
   useEffect(() => { resetVisibilityOnMount(); }, []);
   useFocusEffect(
@@ -75,7 +120,7 @@ export default function HomeScreen({ navigation }) {
   }
 
   return (
-    <View style={homeStyles.container}>
+    <Animated.View style={[homeStyles.container, enterStyle]}>
       <TouchableOpacity
         style={homeStyles.settingsBtn}
         onPress={() => navigation.navigate('ProfileEdit')}
@@ -93,33 +138,49 @@ export default function HomeScreen({ navigation }) {
         </Text>
       </Text>
 
-      <TouchableOpacity
-        style={[
-          homeStyles.toggleButton,
-          isVisible ? homeStyles.toggleOn : homeStyles.toggleOff,
-          loading && homeStyles.toggleLoading,
-        ]}
-        onPress={handleToggle}
-        disabled={loading}
-        accessibilityRole="switch"
-        accessibilityState={{ checked: isVisible }}
-        accessibilityLabel={isVisible ? 'Go invisible' : 'Go visible'}
-      >
-        {loading ? (
-          <ActivityIndicator size="large" color="#fff" />
-        ) : (
-          <Text style={homeStyles.toggleText}>
-            {isVisible ? 'GO INVISIBLE' : 'GO VISIBLE'}
-          </Text>
-        )}
-      </TouchableOpacity>
+      <View style={{ width: 200, height: 200, alignItems: 'center', justifyContent: 'center' }}>
+        <Animated.View
+          style={[
+            homeStyles.pulseRing,
+            { transform: [{ scale: ring1Scale }], opacity: ring1Opacity },
+          ]}
+        />
+        <Animated.View
+          style={[
+            homeStyles.pulseRing,
+            { transform: [{ scale: ring2Scale }], opacity: ring2Opacity },
+          ]}
+        />
+        <TouchableOpacity
+          style={[
+            homeStyles.toggleButton,
+            loading && homeStyles.toggleLoading,
+            isVisible ? theme.shadows.orb : homeStyles.toggleShadowOff,
+          ]}
+          onPress={handleToggle}
+          disabled={loading}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: isVisible }}
+          accessibilityLabel={isVisible ? 'Go invisible' : 'Go visible'}
+        >
+          <Animated.View style={[homeStyles.orbInner, { backgroundColor: orbBg }]}>
+            {loading ? (
+              <ActivityIndicator size="large" color="#fff" />
+            ) : (
+              <Text style={homeStyles.toggleText}>
+                {isVisible ? 'GO INVISIBLE' : 'GO VISIBLE'}
+              </Text>
+            )}
+          </Animated.View>
+        </TouchableOpacity>
+      </View>
 
       <Text style={homeStyles.hint}>
         {isVisible ? 'Others nearby can see you.' : 'You are hidden from everyone.'}
       </Text>
 
       <TouchableOpacity
-        style={homeStyles.signalsBtn}
+        style={[homeStyles.signalsBtn, theme.shadows.card]}
         onPress={() => navigation.navigate('Signals')}
         accessibilityRole="button"
         accessibilityLabel="View signals"
@@ -130,7 +191,7 @@ export default function HomeScreen({ navigation }) {
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={homeStyles.chatsBtn}
+        style={[homeStyles.chatsBtn, theme.shadows.card]}
         onPress={() => navigation.navigate('Chats')}
         accessibilityRole="button"
         accessibilityLabel="View chats"
@@ -139,7 +200,7 @@ export default function HomeScreen({ navigation }) {
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={homeStyles.discoverBtn}
+        style={[homeStyles.discoverBtn, theme.shadows.card]}
         onPress={() => navigation.navigate('Discovery')}
         accessibilityRole="button"
         accessibilityLabel="Find people nearby"
@@ -157,14 +218,14 @@ export default function HomeScreen({ navigation }) {
       </TouchableOpacity>
 
       <Toast key={toastKey} message={toastMsg} visible={!!toastMsg} />
-    </View>
+    </Animated.View>
   );
 }
 
 const homeStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.bgBase,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
@@ -175,48 +236,62 @@ const homeStyles = StyleSheet.create({
     right: 20,
     padding: 8,
   },
-  settingsIcon: { fontSize: 26, color: '#555' },
-  title: { fontSize: 40, fontWeight: '800', color: '#6C47FF', marginBottom: 16 },
-  statusLabel: { fontSize: 18, color: '#555', marginBottom: 40 },
-  statusOn: { color: '#2E7D32', fontWeight: '700' },
-  statusOff: { color: '#999', fontWeight: '700' },
+  settingsIcon: { fontSize: 26, color: theme.colors.textSecondary },
+  title: { ...theme.typography.displayLg, color: theme.colors.brand, marginBottom: 16 },
+  statusLabel: { fontSize: 18, color: theme.colors.textSecondary, marginBottom: 40 },
+  statusOn: { color: theme.colors.success, fontWeight: '700' },
+  statusOff: { color: theme.colors.textFaint, fontWeight: '700' },
+  pulseRing: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 2,
+    borderColor: theme.colors.brand,
+  },
   toggleButton: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    overflow: 'hidden',
+  },
+  orbInner: {
     width: 200,
     height: 200,
     borderRadius: 100,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  toggleShadowOff: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.18,
     shadowRadius: 12,
     elevation: 8,
   },
-  toggleOn: { backgroundColor: '#6C47FF' },
-  toggleOff: { backgroundColor: '#C7C7CC' },
   toggleLoading: { opacity: 0.7 },
   toggleText: { color: '#fff', fontSize: 18, fontWeight: '700', textAlign: 'center', letterSpacing: 1 },
-  hint: { marginTop: 28, fontSize: 14, color: '#888', textAlign: 'center' },
+  hint: { marginTop: 28, fontSize: 14, color: theme.colors.textMuted, textAlign: 'center' },
   signalsBtn: {
     marginTop: 24,
-    backgroundColor: '#4CAF50',
-    borderRadius: 24,
+    backgroundColor: theme.colors.success,
+    borderRadius: theme.radii.pill,
     paddingVertical: 14,
     paddingHorizontal: 32,
   },
   signalsBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   chatsBtn: {
     marginTop: 12,
-    backgroundColor: '#FF6C47',
-    borderRadius: 24,
+    backgroundColor: theme.colors.accent,
+    borderRadius: theme.radii.pill,
     paddingVertical: 14,
     paddingHorizontal: 32,
   },
   chatsBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   discoverBtn: {
     marginTop: 12,
-    backgroundColor: '#6C47FF',
-    borderRadius: 24,
+    backgroundColor: theme.colors.brand,
+    borderRadius: theme.radii.pill,
     paddingVertical: 14,
     paddingHorizontal: 32,
   },
@@ -226,20 +301,5 @@ const homeStyles = StyleSheet.create({
     bottom: Platform.OS === 'ios' ? 48 : 28,
     padding: 8,
   },
-  signOutText: { fontSize: 14, color: '#aaa', textDecorationLine: 'underline' },
-});
-
-const toastStyles = StyleSheet.create({
-  toast: {
-    position: 'absolute',
-    bottom: 90,
-    left: 24,
-    right: 24,
-    backgroundColor: '#323232',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  toastText: { color: '#fff', fontSize: 14 },
+  signOutText: { fontSize: 14, color: theme.colors.textFaint, textDecorationLine: 'underline' },
 });

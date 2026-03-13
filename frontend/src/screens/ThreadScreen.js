@@ -15,26 +15,8 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getMessages, sendMessage, blockUser, reportUser } from '../api/chat';
-
-function Toast({ message, visible }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.delay(2200),
-        Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [visible, message, opacity]);
-
-  return (
-    <Animated.View style={[toastStyles.toast, { opacity }]} pointerEvents="none">
-      <Text style={toastStyles.toastText}>{message}</Text>
-    </Animated.View>
-  );
-}
+import Toast from '../components/Toast';
+import { theme } from '../theme';
 
 function formatTime(isoString) {
   if (!isoString) return '';
@@ -62,6 +44,16 @@ export default function ThreadScreen({ route, navigation }) {
   const [toastKey, setToastKey] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
+
+  // Entrance animation
+  const enterAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(enterAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+  }, []);
+  const enterStyle = {
+    opacity: enterAnim,
+    transform: [{ translateY: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+  };
 
   const listRef = useRef(null);
 
@@ -232,7 +224,7 @@ export default function ThreadScreen({ route, navigation }) {
   const canSend = inputText.trim().length > 0 && !sending;
 
   return (
-    <View style={[styles.container, { marginBottom: kbHeight }]}>
+    <Animated.View style={[styles.container, { marginBottom: kbHeight }, enterStyle]}>
       <FlatList
         ref={listRef}
         data={messages}
@@ -244,7 +236,7 @@ export default function ThreadScreen({ route, navigation }) {
         onEndReachedThreshold={0.1}
         ListHeaderComponent={
           loadingOlder
-            ? <ActivityIndicator size="small" color="#6C47FF" style={{ paddingVertical: 8 }} />
+            ? <ActivityIndicator size="small" color={theme.colors.brand} style={{ paddingVertical: 8 }} />
             : null
         }
       />
@@ -255,7 +247,7 @@ export default function ThreadScreen({ route, navigation }) {
           value={inputText}
           onChangeText={setInputText}
           placeholder="Type a message..."
-          placeholderTextColor="#aaa"
+          placeholderTextColor={theme.colors.textFaint}
           maxLength={1000}
           multiline
           numberOfLines={1}
@@ -274,12 +266,12 @@ export default function ThreadScreen({ route, navigation }) {
       </View>
 
       <Toast key={toastKey} message={toastMsg} visible={!!toastMsg} />
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: theme.colors.bgBase },
   list: { padding: 12, paddingBottom: 8 },
   bubbleRow: { flexDirection: 'row', marginBottom: 8 },
   bubbleRowMine: { justifyContent: 'flex-end' },
@@ -290,56 +282,41 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
   },
-  bubbleMine: { backgroundColor: '#6C47FF', borderBottomRightRadius: 4 },
-  bubbleTheirs: { backgroundColor: '#f0f0f0', borderBottomLeftRadius: 4 },
+  bubbleMine: { backgroundColor: theme.colors.brand, borderBottomRightRadius: 4 },
+  bubbleTheirs: { backgroundColor: theme.colors.bgDim, borderBottomLeftRadius: 4 },
   bubbleTextMine: { color: '#fff', fontSize: 15, lineHeight: 21 },
-  bubbleTextTheirs: { color: '#222', fontSize: 15, lineHeight: 21 },
+  bubbleTextTheirs: { color: theme.colors.textBody, fontSize: 15, lineHeight: 21 },
   bubbleTimeMine: { color: 'rgba(255,255,255,0.65)', fontSize: 11, marginTop: 4, textAlign: 'right' },
-  bubbleTimeTheirs: { color: '#aaa', fontSize: 11, marginTop: 4, textAlign: 'left' },
+  bubbleTimeTheirs: { color: theme.colors.textFaint, fontSize: 11, marginTop: 4, textAlign: 'left' },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: '#ebebeb',
-    backgroundColor: '#fff',
+    borderTopColor: theme.colors.borderSubtle,
+    backgroundColor: theme.colors.bgBase,
   },
   input: {
     flex: 1,
     minHeight: 40,
     maxHeight: 96,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.bgWash,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#222',
+    color: theme.colors.textBody,
     marginRight: 8,
   },
   sendBtn: {
-    backgroundColor: '#6C47FF',
+    backgroundColor: theme.colors.brand,
     borderRadius: 20,
     paddingHorizontal: 18,
     paddingVertical: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  sendBtnDisabled: { backgroundColor: '#C7C7CC' },
+  sendBtnDisabled: { backgroundColor: theme.colors.disabled },
   sendBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-});
-
-const toastStyles = StyleSheet.create({
-  toast: {
-    position: 'absolute',
-    bottom: 90,
-    left: 24,
-    right: 24,
-    backgroundColor: '#323232',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  toastText: { color: '#fff', fontSize: 14 },
 });

@@ -1,8 +1,9 @@
-import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
+import { theme } from '../theme';
 
 import PhoneEntryScreen from '../screens/PhoneEntryScreen';
 import OtpVerifyScreen from '../screens/OtpVerifyScreen';
@@ -63,16 +64,86 @@ function AppNavigator() {
   );
 }
 
+function SplashScreen() {
+  const wordmarkScale = useRef(new Animated.Value(0.85)).current;
+
+  const circle1Y = useRef(new Animated.Value(0)).current;
+  const circle2Y = useRef(new Animated.Value(0)).current;
+  const circle3Y = useRef(new Animated.Value(0)).current;
+  const circle4Y = useRef(new Animated.Value(0)).current;
+  const circle5Y = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Wordmark entrance
+    Animated.timing(wordmarkScale, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start();
+
+    // Floating circles with staggered delays
+    const makeLoop = (anim, delay) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(anim, { toValue: -16, duration: 1800, useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0, duration: 1800, useNativeDriver: true }),
+        ])
+      );
+
+    makeLoop(circle1Y, 0).start();
+    makeLoop(circle2Y, 300).start();
+    makeLoop(circle3Y, 600).start();
+    makeLoop(circle4Y, 900).start();
+    makeLoop(circle5Y, 1200).start();
+  }, []);
+
+  const circles = [
+    { anim: circle1Y, size: 56, top: '15%', left: '10%', opacity: 0.12 },
+    { anim: circle2Y, size: 36, top: '25%', right: '12%', opacity: 0.1 },
+    { anim: circle3Y, size: 24, top: '60%', left: '18%', opacity: 0.15 },
+    { anim: circle4Y, size: 44, bottom: '20%', right: '8%', opacity: 0.08 },
+    { anim: circle5Y, size: 20, bottom: '32%', left: '60%', opacity: 0.13 },
+  ];
+
+  return (
+    <View style={splashStyles.container}>
+      {circles.map((c, i) => (
+        <Animated.View
+          key={i}
+          style={[
+            splashStyles.circle,
+            {
+              width: c.size,
+              height: c.size,
+              borderRadius: c.size / 2,
+              opacity: c.opacity,
+              top: c.top,
+              left: c.left,
+              right: c.right,
+              bottom: c.bottom,
+              transform: [{ translateY: c.anim }],
+            },
+          ]}
+        />
+      ))}
+      <Animated.Text
+        style={[
+          splashStyles.wordmark,
+          { transform: [{ scale: wordmarkScale }] },
+        ]}
+      >
+        Bubble
+      </Animated.Text>
+    </View>
+  );
+}
+
 export default function RootNavigator() {
   const { authState } = useAuth();
 
   if (authState === null) {
-    // Loading: silent refresh in progress
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#6C47FF" />
-      </View>
-    );
+    return <SplashScreen />;
   }
 
   return (
@@ -82,11 +153,19 @@ export default function RootNavigator() {
   );
 }
 
-const styles = StyleSheet.create({
-  center: {
+const splashStyles = StyleSheet.create({
+  container: {
     flex: 1,
+    backgroundColor: theme.colors.brand,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  wordmark: {
+    ...theme.typography.displayLg,
+    color: '#fff',
+  },
+  circle: {
+    position: 'absolute',
     backgroundColor: '#fff',
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,11 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   StyleSheet,
+  Animated,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { getThreads } from '../api/chat';
+import { theme } from '../theme';
 
 function relativeTime(isoString) {
   if (!isoString) return '';
@@ -25,6 +27,16 @@ export default function ChatsScreen({ navigation }) {
   const [threads, setThreads] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Entrance animation
+  const enterAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(enterAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+  }, []);
+  const enterStyle = {
+    opacity: enterAnim,
+    transform: [{ translateY: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+  };
 
   const loadThreads = useCallback(async () => {
     setLoading(true);
@@ -55,7 +67,7 @@ export default function ChatsScreen({ navigation }) {
 
     return (
       <TouchableOpacity
-        style={styles.card}
+        style={[styles.card, theme.shadows.card]}
         onPress={() =>
           navigation.navigate('Thread', {
             threadId: item.thread_id,
@@ -80,7 +92,7 @@ export default function ChatsScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, enterStyle]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Chats</Text>
       </View>
@@ -89,7 +101,7 @@ export default function ChatsScreen({ navigation }) {
 
       {loading && threads.length === 0 ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#6C47FF" />
+          <ActivityIndicator size="large" color={theme.colors.brand} />
         </View>
       ) : (
         <FlatList
@@ -106,35 +118,35 @@ export default function ChatsScreen({ navigation }) {
           }
         />
       )}
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: theme.colors.bgBase },
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.bgDim,
   },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#6C47FF' },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: theme.colors.brand },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
   list: { padding: 16 },
   emptyList: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  emptyText: { fontSize: 15, color: '#aaa', textAlign: 'center', lineHeight: 22 },
+  emptyText: { fontSize: 15, color: theme.colors.textFaint, textAlign: 'center', lineHeight: 22 },
   errorText: { color: '#c00', textAlign: 'center', padding: 12, fontSize: 13 },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: theme.colors.bgBase,
+    borderRadius: theme.radii.md,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#ebebeb',
+    borderColor: theme.colors.borderSubtle,
   },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cardName: { fontSize: 17, fontWeight: '700', color: '#222' },
-  cardTime: { fontSize: 12, color: '#aaa' },
+  cardName: { fontSize: 17, fontWeight: '700', color: theme.colors.textBody },
+  cardTime: { fontSize: 12, color: theme.colors.textFaint },
   cardPreview: { fontSize: 14, color: '#666', marginTop: 6 },
 });

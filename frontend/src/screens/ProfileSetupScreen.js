@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,11 @@ import {
   ScrollView,
   Platform,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { updateProfile } from '../api/profile';
 import { useAuth } from '../context/AuthContext';
+import { theme } from '../theme';
 
 // DateTimePicker is native-only; import conditionally
 let DateTimePicker = null;
@@ -190,7 +192,7 @@ export function ProfileForm({ initialValues = {}, onSave, saving }) {
       <TextInput
         style={[styles.input, errors.displayName && styles.inputError]}
         placeholder="How others will see you"
-        placeholderTextColor="#aaa"
+        placeholderTextColor={theme.colors.textFaint}
         value={displayName}
         onChangeText={(t) => {
           setDisplayName(t);
@@ -250,7 +252,7 @@ export function ProfileForm({ initialValues = {}, onSave, saving }) {
       <TextInput
         style={[styles.input, styles.bioInput]}
         placeholder="A short intro about you"
-        placeholderTextColor="#aaa"
+        placeholderTextColor={theme.colors.textFaint}
         value={bio}
         onChangeText={(t) => setBio(t.slice(0, 140))}
         multiline
@@ -327,6 +329,16 @@ export default function ProfileSetupScreen() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
+  // Entrance animation
+  const enterAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(enterAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+  }, []);
+  const enterStyle = {
+    opacity: enterAnim,
+    transform: [{ translateY: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+  };
+
   async function handleSave(data) {
     setSaving(true);
     setSaveError('');
@@ -343,23 +355,22 @@ export default function ProfileSetupScreen() {
   }
 
   return (
-    <View style={styles.flex}>
+    <Animated.View style={[styles.flex, enterStyle]}>
       <Text style={styles.heading}>Set Up Your Profile</Text>
       <Text style={styles.subheading}>Tell us a bit about yourself.</Text>
       {saveError ? (
         <Text style={styles.saveError}>{saveError}</Text>
       ) : null}
       <ProfileForm onSave={handleSave} saving={saving} />
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#fff' },
+  flex: { flex: 1, backgroundColor: theme.colors.bgBase },
   heading: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#111',
+    ...theme.typography.titleMd,
+    color: theme.colors.textPrimary,
     paddingHorizontal: 24,
     paddingTop: 60,
     marginBottom: 4,
@@ -371,7 +382,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   saveError: {
-    color: '#E53935',
+    color: theme.colors.error,
     fontSize: 14,
     paddingHorizontal: 24,
     marginBottom: 4,
@@ -384,29 +395,29 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     marginTop: 16,
   },
-  required: { color: '#E53935' },
+  required: { color: theme.colors.error },
   optional: { color: '#999', fontWeight: '400' },
   input: {
     height: 50,
     borderWidth: 1.5,
-    borderColor: '#ddd',
-    borderRadius: 10,
+    borderColor: theme.colors.borderDefault,
+    borderRadius: theme.radii.md,
     paddingHorizontal: 14,
     fontSize: 16,
-    color: '#111',
+    color: theme.colors.textPrimary,
   },
-  inputError: { borderColor: '#E53935' },
-  errorText: { color: '#E53935', fontSize: 12, marginTop: 4 },
+  inputError: { borderColor: theme.colors.error },
+  errorText: { color: theme.colors.error, fontSize: 12, marginTop: 4 },
   dateButton: { justifyContent: 'center' },
-  dateText: { fontSize: 16, color: '#111' },
-  datePlaceholder: { fontSize: 16, color: '#aaa' },
+  dateText: { fontSize: 16, color: theme.colors.textPrimary },
+  datePlaceholder: { fontSize: 16, color: theme.colors.textFaint },
   doneBtn: {
     alignSelf: 'flex-end',
     paddingVertical: 6,
     paddingHorizontal: 16,
     marginTop: 4,
   },
-  doneBtnText: { color: '#6C47FF', fontSize: 16, fontWeight: '600' },
+  doneBtnText: { color: theme.colors.brand, fontSize: 16, fontWeight: '600' },
   bioInput: { height: 90, paddingTop: 12 },
   charCount: { fontSize: 11, color: '#bbb', textAlign: 'right', marginTop: 2 },
   optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -415,16 +426,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: '#ddd',
+    borderColor: theme.colors.borderDefault,
     marginBottom: 4,
   },
-  optionChipActive: { borderColor: '#6C47FF', backgroundColor: '#EDE9FF' },
-  optionChipText: { fontSize: 14, color: '#555' },
-  optionChipTextActive: { color: '#6C47FF', fontWeight: '600' },
+  optionChipActive: { borderColor: theme.colors.brand, backgroundColor: theme.colors.badgePurpleBg },
+  optionChipText: { fontSize: 14, color: theme.colors.textSecondary },
+  optionChipTextActive: { color: theme.colors.brand, fontWeight: '600' },
   saveButton: {
     height: 52,
-    backgroundColor: '#6C47FF',
-    borderRadius: 12,
+    backgroundColor: theme.colors.brand,
+    borderRadius: theme.radii.md,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 32,

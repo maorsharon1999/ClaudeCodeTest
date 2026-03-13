@@ -1,18 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { getProfile, updateProfile } from '../api/profile';
 import { ProfileForm } from './ProfileSetupScreen';
+import { theme } from '../theme';
 
 export default function ProfileEditScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
   const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  // Entrance animation
+  const enterAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(enterAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+  }, []);
+  const enterStyle = {
+    opacity: enterAnim,
+    transform: [{ translateY: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
+  };
 
   useEffect(() => {
     getProfile()
@@ -46,13 +58,13 @@ export default function ProfileEditScreen({ navigation }) {
   if (!profile) {
     return (
       <View style={editStyles.center}>
-        <ActivityIndicator size="large" color="#6C47FF" />
+        <ActivityIndicator size="large" color={theme.colors.brand} />
       </View>
     );
   }
 
   return (
-    <>
+    <Animated.View style={[editStyles.flex, enterStyle]}>
       {saveError ? (
         <Text style={editStyles.saveError}>{saveError}</Text>
       ) : null}
@@ -61,12 +73,13 @@ export default function ProfileEditScreen({ navigation }) {
         onSave={handleSave}
         saving={saving}
       />
-    </>
+    </Animated.View>
   );
 }
 
 const editStyles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
-  errorText: { color: '#E53935', fontSize: 15, textAlign: 'center', paddingHorizontal: 32 },
-  saveError: { color: '#E53935', fontSize: 14, paddingHorizontal: 24, paddingTop: 12 },
+  flex: { flex: 1, backgroundColor: theme.colors.bgBase },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.bgBase },
+  errorText: { color: theme.colors.error, fontSize: 15, textAlign: 'center', paddingHorizontal: 32 },
+  saveError: { color: theme.colors.error, fontSize: 14, paddingHorizontal: 24, paddingTop: 12 },
 });
