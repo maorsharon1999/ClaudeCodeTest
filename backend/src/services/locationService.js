@@ -1,6 +1,47 @@
 'use strict';
 const pool = require('../db/pool');
 
+// djb2 string hash — returns a 32-bit signed integer
+function djb2(str) {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
+    hash |= 0; // keep 32-bit signed
+  }
+  return hash;
+}
+
+// LCG step: next = (a * seed + c) mod m (32-bit signed arithmetic)
+function lcgStep(seed) {
+  return (Math.imul(1664525, seed) + 1013904223) | 0;
+}
+
+// Returns a stable, privacy-safe jittered coordinate pair for a user.
+// The jitter is deterministic per (userId, 5-min time bucket) so the
+// position drifts slowly rather than jumping every render, but exact
+// coordinates are never exposed.
+function jitterCoords(userId, lat, lng, bucket, recordedAt) {
+  const timeBucket = Math.floor(recordedAt.getTime() / 300000);
+  const seed = djb2(userId + String(timeBucket));
+
+  const step1 = lcgStep(seed);
+  const step2 = lcgStep(step1);
+
+  // Normalise LCG outputs to [-1, 1]
+  const r1 = step1 / 2147483647;
+  const r2 = step2 / 2147483647;
+
+  const maxM = bucket === 'nearby' ? 100 : 300;
+
+  const dLat = (r1 * maxM) / 111000;
+  const dLng = (r2 * maxM) / (111000 * Math.cos((lat * Math.PI) / 180));
+
+  return {
+    jittered_lat: lat + dLat,
+    jittered_lng: lng + dLng,
+  };
+}
+
 async function upsertLocation(userId, lat, lng) {
   if (lat == null || lng == null) {
     const err = new Error('lat and lng are required');
@@ -60,6 +101,9 @@ async function getNearby(userId) {
         p.gender,
         p.looking_for AS candidate_looking_for,
         vs.updated_at AS visibility_updated_at,
+        ul.lat,
+        ul.lng,
+        ul.recorded_at,
         6371000 * acos(LEAST(1.0,
           cos(radians($2)) * cos(radians(ul.lat))
             * cos(radians(ul.lng) - radians($3))
@@ -85,6 +129,9 @@ async function getNearby(userId) {
         gender,
         candidate_looking_for,
         visibility_updated_at,
+        lat,
+        lng,
+        recorded_at,
         CASE
           WHEN dist_m < 500  THEN 'nearby'
           WHEN dist_m < 2000 THEN 'same_area'
@@ -100,6 +147,9 @@ async function getNearby(userId) {
         bio,
         photos,
         proximity_bucket,
+        lat,
+        lng,
+        recorded_at,
         (
           CASE proximity_bucket WHEN 'nearby' THEN 5 WHEN 'same_area' THEN 2 ELSE 0 END
           + CASE
@@ -116,17 +166,20 @@ async function getNearby(userId) {
         ) AS score
       FROM bucketed
     )
-    SELECT user_id, display_name, age, bio, photos, proximity_bucket, score
+    SELECT user_id, display_name, age, bio, photos, proximity_bucket, lat, lng, recorded_at, score
     FROM scored
     ORDER BY score DESC, user_id ASC
     LIMIT 20`,
     [userId, callerLat, callerLng, callerGender ?? null, callerLookingFor ?? null]
   );
 
-  // Strip score and apply defensive JS cap before returning
+  // Strip raw coords and score; apply deterministic jitter before returning
   return result.rows
     .slice(0, 20)
-    .map(({ score: _score, ...rest }) => rest);
+    .map(({ score: _s, lat: _lat, lng: _lng, recorded_at: _ra, ...rest }) => ({
+      ...rest,
+      ...jitterCoords(rest.user_id, _lat, _lng, rest.proximity_bucket, _ra),
+    }));
 }
 
-module.exports = { upsertLocation, getNearby };
+module.exports = { upsertLocation, getNearby, jitterCoords, djb2 };

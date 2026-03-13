@@ -15,6 +15,7 @@ import * as Location from 'expo-location';
 import { updateLocation, getNearbyUsers } from '../api/discovery';
 import { sendSignal, getOutgoingSignals } from '../api/signals';
 import Toast from '../components/Toast';
+import BubbleMapView from '../components/BubbleMapView';
 import { theme } from '../theme';
 
 export default function DiscoveryScreen() {
@@ -27,6 +28,8 @@ export default function DiscoveryScreen() {
   const [signalledIds, setSignalledIds] = useState(new Set());
   const [toastMsg, setToastMsg] = useState('');
   const [toastKey, setToastKey] = useState(0);
+  const [viewMode, setViewMode] = useState('list');
+  const [myLocation, setMyLocation] = useState(null);
 
   // Entrance animation
   const enterAnim = useRef(new Animated.Value(0)).current;
@@ -53,6 +56,7 @@ export default function DiscoveryScreen() {
         timeInterval: 8000,
         distanceInterval: 0,
       });
+      setMyLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
       await updateLocation(pos.coords.latitude, pos.coords.longitude);
       const nearby = await getNearbyUsers();
       setUsers(nearby);
@@ -125,9 +129,43 @@ export default function DiscoveryScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Nearby</Text>
         <Text style={styles.headerSub}>Last updated: {formatTime(lastUpdated)}</Text>
+        {/* Segmented List / Map toggle */}
+        <View style={styles.segmentRow}>
+          <TouchableOpacity
+            style={[styles.segmentPill, viewMode === 'list' && styles.segmentPillActive]}
+            onPress={() => setViewMode('list')}
+            accessibilityRole="button"
+            accessibilityLabel="List view"
+          >
+            <Text style={[styles.segmentText, viewMode === 'list' && styles.segmentTextActive]}>
+              List
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.segmentPill, viewMode === 'map' && styles.segmentPillActive]}
+            onPress={() => setViewMode('map')}
+            accessibilityRole="button"
+            accessibilityLabel="Map view"
+          >
+            <Text style={[styles.segmentText, viewMode === 'map' && styles.segmentTextActive]}>
+              Map
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {loading && users.length === 0 ? (
+      {viewMode === 'map' && myLocation ? (
+        <BubbleMapView
+          users={users}
+          myLocation={myLocation}
+          signalledIds={signalledIds}
+          onSignal={handleSignal}
+        />
+      ) : viewMode === 'map' && !myLocation ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={theme.colors.brand} />
+        </View>
+      ) : loading && users.length === 0 ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.colors.brand} />
         </View>
@@ -217,6 +255,30 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 24, fontWeight: '800', color: theme.colors.brand },
   headerSub: { fontSize: 12, color: theme.colors.textFaint, marginTop: 2 },
+  segmentRow: {
+    flexDirection: 'row',
+    marginTop: 10,
+    backgroundColor: theme.colors.bgDim,
+    borderRadius: theme.radii.pill,
+    padding: 3,
+    alignSelf: 'flex-start',
+  },
+  segmentPill: {
+    paddingVertical: 5,
+    paddingHorizontal: 18,
+    borderRadius: theme.radii.pill,
+  },
+  segmentPillActive: {
+    backgroundColor: theme.colors.brand,
+  },
+  segmentText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  segmentTextActive: {
+    color: '#fff',
+  },
   list: { padding: 16 },
   emptyList: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
   emptyText: { fontSize: 16, color: theme.colors.textFaint, textAlign: 'center' },

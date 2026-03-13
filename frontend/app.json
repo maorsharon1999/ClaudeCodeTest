@@ -28,7 +28,8 @@
         "backgroundColor": "#6C47FF"
       },
       "package": "com.bubble.mvp",
-      "permissions": ["RECORD_AUDIO"]
+      "permissions": ["RECORD_AUDIO"],
+      "config": { "googleMaps": { "apiKey": "PLACEHOLDER_REPLACE_ME" } }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -37,7 +38,8 @@
       ["expo-secure-store"],
       ["expo-location", {
         "locationWhenInUsePermission": "Bubble needs your location to find people nearby."
-      }]
+      }],
+      ["react-native-maps"]
     ]
   }
 }
