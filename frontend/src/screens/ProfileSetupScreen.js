@@ -13,6 +13,7 @@ import {
 import { updateProfile } from '../api/profile';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../theme';
+import PhotoEditor from '../components/PhotoEditor';
 
 // DateTimePicker is native-only; import conditionally
 let DateTimePicker = null;
@@ -114,6 +115,11 @@ const LOOKING_FOR_OPTIONS = [
   { label: 'Non-binary', value: 'nonbinary' },
   { label: 'Everyone', value: 'everyone' },
 ];
+const INTENT_OPTIONS = [
+  { label: 'Casual', value: 'casual' },
+  { label: 'Serious', value: 'serious' },
+  { label: 'Open', value: 'open' },
+];
 const MIN_AGE_YEARS = 18;
 
 function isAtLeast18(date) {
@@ -127,7 +133,7 @@ function isAtLeast18(date) {
 }
 
 // Shared form used by both ProfileSetupScreen and ProfileEditScreen
-export function ProfileForm({ initialValues = {}, onSave, saving }) {
+export function ProfileForm({ initialValues = {}, onSave, saving, photos = [], onPhotosChange }) {
   const [displayName, setDisplayName] = useState(initialValues.display_name || '');
   const [birthDate, setBirthDate] = useState(
     initialValues.birth_date ? new Date(initialValues.birth_date) : null
@@ -136,6 +142,8 @@ export function ProfileForm({ initialValues = {}, onSave, saving }) {
   const [bio, setBio] = useState(initialValues.bio || '');
   const [gender, setGender] = useState(initialValues.gender || '');
   const [lookingFor, setLookingFor] = useState(initialValues.looking_for || '');
+  const [intent, setIntent] = useState(initialValues.intent || '');
+  const [focusedField, setFocusedField] = useState(null);
   const [errors, setErrors] = useState({});
 
   const maxDate = new Date(
@@ -169,6 +177,7 @@ export function ProfileForm({ initialValues = {}, onSave, saving }) {
       bio: bio.trim() || undefined,
       gender: gender || undefined,
       looking_for: lookingFor || undefined,
+      intent: intent || undefined,
     });
   }
 
@@ -186,125 +195,146 @@ export function ProfileForm({ initialValues = {}, onSave, saving }) {
       contentContainerStyle={styles.container}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={styles.label}>
-        Display Name <Text style={styles.required}>*</Text>
-      </Text>
-      <TextInput
-        style={[styles.input, errors.displayName && styles.inputError]}
-        placeholder="How others will see you"
-        placeholderTextColor={theme.colors.textFaint}
-        value={displayName}
-        onChangeText={(t) => {
-          setDisplayName(t);
-          if (errors.displayName) setErrors((e) => ({ ...e, displayName: undefined }));
-        }}
-        autoCorrect={false}
-        maxLength={40}
-      />
-      {errors.displayName && <Text style={styles.errorText}>{errors.displayName}</Text>}
-
-      <Text style={styles.label}>
-        Birth Date <Text style={styles.required}>*</Text>
-      </Text>
-      {Platform.OS === 'web' ? (
-        <WebDatePicker
-          value={birthDate}
-          maxDate={maxDate}
-          hasError={!!errors.birthDate}
-          onChange={(d) => {
-            setBirthDate(d);
-            if (errors.birthDate) setErrors((e) => ({ ...e, birthDate: undefined }));
-          }}
-        />
-      ) : (
-        <>
-          <TouchableOpacity
-            style={[styles.input, styles.dateButton, errors.birthDate && styles.inputError]}
-            onPress={() => setShowDatePicker(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Select birth date"
-          >
-            <Text style={birthDate ? styles.dateText : styles.datePlaceholder}>
-              {birthDate ? birthDate.toLocaleDateString() : 'Select your birth date'}
-            </Text>
-          </TouchableOpacity>
-          {showDatePicker && DateTimePicker && (
-            <DateTimePicker
-              value={birthDate || maxDate}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              maximumDate={maxDate}
-              onChange={handleDateChange}
-            />
-          )}
-          {Platform.OS === 'ios' && showDatePicker && (
-            <TouchableOpacity style={styles.doneBtn} onPress={() => setShowDatePicker(false)}>
-              <Text style={styles.doneBtnText}>Done</Text>
-            </TouchableOpacity>
-          )}
-        </>
-      )}
-      {errors.birthDate && <Text style={styles.errorText}>{errors.birthDate}</Text>}
-
-      <Text style={styles.label}>
-        Bio <Text style={styles.optional}>(optional)</Text>
-      </Text>
-      <TextInput
-        style={[styles.input, styles.bioInput]}
-        placeholder="A short intro about you"
-        placeholderTextColor={theme.colors.textFaint}
-        value={bio}
-        onChangeText={(t) => setBio(t.slice(0, 140))}
-        multiline
-        maxLength={140}
-        textAlignVertical="top"
-      />
-      <Text style={styles.charCount}>{bio.length}/140</Text>
-
-      <Text style={styles.label}>
-        Gender <Text style={styles.optional}>(optional)</Text>
-      </Text>
-      <View style={styles.optionRow}>
-        {GENDER_OPTIONS.map((opt) => (
-          <TouchableOpacity
-            key={opt.value}
-            style={[styles.optionChip, gender === opt.value && styles.optionChipActive]}
-            onPress={() => setGender(gender === opt.value ? '' : opt.value)}
-            accessibilityRole="button"
-          >
-            <Text
-              style={[
-                styles.optionChipText,
-                gender === opt.value && styles.optionChipTextActive,
-              ]}
-            >
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Photos <Text style={styles.optional}>(optional)</Text></Text>
+        <PhotoEditor photos={photos} onPhotosChange={onPhotosChange || (() => {})} />
       </View>
 
-      <Text style={styles.label}>
-        Looking For <Text style={styles.optional}>(optional)</Text>
-      </Text>
-      <View style={styles.optionRow}>
-        {LOOKING_FOR_OPTIONS.map((opt) => (
-          <TouchableOpacity
-            key={opt.value}
-            style={[styles.optionChip, lookingFor === opt.value && styles.optionChipActive]}
-            onPress={() => setLookingFor(lookingFor === opt.value ? '' : opt.value)}
-            accessibilityRole="button"
-          >
-            <Text
-              style={[
-                styles.optionChipText,
-                lookingFor === opt.value && styles.optionChipTextActive,
-              ]}
+      <View style={[styles.section, styles.sectionBorder]}>
+        <Text style={styles.label}>
+          Display Name <Text style={styles.required}>*</Text>
+        </Text>
+        <TextInput
+          style={[styles.input, errors.displayName && styles.inputError, focusedField === 'displayName' && styles.inputFocused]}
+          placeholder="How others will see you"
+          placeholderTextColor={theme.colors.textFaint}
+          value={displayName}
+          onChangeText={(t) => {
+            setDisplayName(t);
+            if (errors.displayName) setErrors((e) => ({ ...e, displayName: undefined }));
+          }}
+          onFocus={() => setFocusedField('displayName')}
+          onBlur={() => setFocusedField(null)}
+          autoCorrect={false}
+          maxLength={40}
+        />
+        {errors.displayName && <Text style={styles.errorText}>{errors.displayName}</Text>}
+
+        <Text style={styles.label}>
+          Birth Date <Text style={styles.required}>*</Text>
+        </Text>
+        {Platform.OS === 'web' ? (
+          <WebDatePicker
+            value={birthDate}
+            maxDate={maxDate}
+            hasError={!!errors.birthDate}
+            onChange={(d) => {
+              setBirthDate(d);
+              if (errors.birthDate) setErrors((e) => ({ ...e, birthDate: undefined }));
+            }}
+          />
+        ) : (
+          <>
+            <TouchableOpacity
+              style={[styles.input, styles.dateButton, errors.birthDate && styles.inputError]}
+              onPress={() => setShowDatePicker(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Select birth date"
             >
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text style={birthDate ? styles.dateText : styles.datePlaceholder}>
+                {birthDate ? birthDate.toLocaleDateString() : 'Select your birth date'}
+              </Text>
+            </TouchableOpacity>
+            {showDatePicker && DateTimePicker && (
+              <DateTimePicker
+                value={birthDate || maxDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                maximumDate={maxDate}
+                onChange={handleDateChange}
+              />
+            )}
+            {Platform.OS === 'ios' && showDatePicker && (
+              <TouchableOpacity style={styles.doneBtn} onPress={() => setShowDatePicker(false)}>
+                <Text style={styles.doneBtnText}>Done</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+        {errors.birthDate && <Text style={styles.errorText}>{errors.birthDate}</Text>}
+
+        <Text style={styles.label}>
+          Bio <Text style={styles.optional}>(optional)</Text>
+        </Text>
+        <TextInput
+          style={[styles.input, styles.bioInput, focusedField === 'bio' && styles.inputFocused]}
+          placeholder="A short intro about you"
+          placeholderTextColor={theme.colors.textFaint}
+          value={bio}
+          onChangeText={(t) => setBio(t.slice(0, 140))}
+          onFocus={() => setFocusedField('bio')}
+          onBlur={() => setFocusedField(null)}
+          multiline
+          maxLength={140}
+          textAlignVertical="top"
+        />
+        <Text style={styles.charCount}>{bio.length}/140</Text>
+      </View>
+
+      <View style={[styles.section, styles.sectionBorder]}>
+        <Text style={styles.label}>
+          Gender <Text style={styles.optional}>(optional)</Text>
+        </Text>
+        <View style={styles.optionRow}>
+          {GENDER_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              style={[styles.optionChip, gender === opt.value && styles.optionChipActive]}
+              onPress={() => setGender(gender === opt.value ? '' : opt.value)}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.optionChipText, gender === opt.value && styles.optionChipTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.label}>
+          Looking For <Text style={styles.optional}>(optional)</Text>
+        </Text>
+        <View style={styles.optionRow}>
+          {LOOKING_FOR_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              style={[styles.optionChip, lookingFor === opt.value && styles.optionChipActive]}
+              onPress={() => setLookingFor(lookingFor === opt.value ? '' : opt.value)}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.optionChipText, lookingFor === opt.value && styles.optionChipTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.label}>
+          Intent <Text style={styles.optional}>(optional)</Text>
+        </Text>
+        <View style={styles.optionRow}>
+          {INTENT_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              style={[styles.optionChip, intent === opt.value && styles.optionChipActive]}
+              onPress={() => setIntent(intent === opt.value ? '' : opt.value)}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.optionChipText, intent === opt.value && styles.optionChipTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       <TouchableOpacity
@@ -368,6 +398,18 @@ export default function ProfileSetupScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: theme.colors.bgBase },
+  section: { marginBottom: 8 },
+  sectionBorder: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderSubtle,
+    paddingTop: 8,
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 10,
+  },
   heading: {
     ...theme.typography.titleMd,
     color: theme.colors.textPrimary,
@@ -407,6 +449,7 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
   },
   inputError: { borderColor: theme.colors.error },
+  inputFocused: { borderColor: theme.colors.brand },
   errorText: { color: theme.colors.error, fontSize: 12, marginTop: 4 },
   dateButton: { justifyContent: 'center' },
   dateText: { fontSize: 16, color: theme.colors.textPrimary },

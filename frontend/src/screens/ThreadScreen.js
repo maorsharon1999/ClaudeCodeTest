@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
+  Image,
   FlatList,
   TextInput,
   TouchableOpacity,
@@ -27,7 +28,7 @@ function formatTime(isoString) {
 }
 
 export default function ThreadScreen({ route, navigation }) {
-  const { threadId, displayName, otherUserId } = route.params || {};
+  const { threadId, displayName, otherUserId, otherUserPhoto } = route.params || {};
   const insets = useSafeAreaInsets();
   const [kbHeight, setKbHeight] = useState(0);
 
@@ -197,13 +198,30 @@ export default function ThreadScreen({ route, navigation }) {
 
   useEffect(() => {
     navigation.setOptions({
+      headerTitle: () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {otherUserPhoto ? (
+            <Image
+              source={{ uri: otherUserPhoto }}
+              style={{ width: 32, height: 32, borderRadius: 16, marginRight: 8 }}
+            />
+          ) : (
+            <View
+              style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: theme.colors.bgDim, marginRight: 8 }}
+            />
+          )}
+          <Text style={{ fontSize: 17, fontWeight: '600', color: theme.colors.textPrimary }}>
+            {displayName}
+          </Text>
+        </View>
+      ),
       headerRight: () => (
         <TouchableOpacity onPress={showMenu} style={{ marginRight: 16 }}>
           <Text style={{ fontSize: 22, color: '#555' }}>{'⋯'}</Text>
         </TouchableOpacity>
       ),
     });
-  }, [navigation, displayName, otherUserId]);
+  }, [navigation, displayName, otherUserId, otherUserPhoto]);
 
   function renderMessage({ item }) {
     const isMine = item.is_mine;

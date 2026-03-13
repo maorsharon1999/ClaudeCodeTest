@@ -16,7 +16,10 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.bubble.mvp"
+      "bundleIdentifier": "com.bubble.mvp",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Bubble uses your photos for your profile."
+      }
     },
     "android": {
       "adaptiveIcon": {

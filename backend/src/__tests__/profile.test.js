@@ -29,6 +29,7 @@ jest.mock('../db/pool', () => ({
         bio: null,
         gender: null,
         looking_for: null,
+        intent: null,
         photos: [],
         updated_at: new Date(),
       };
@@ -77,6 +78,7 @@ describe('GET /api/v1/profile/me', () => {
       bio: null,
       gender: null,
       looking_for: null,
+      intent: null,
       photos: [],
       updated_at: new Date(),
     };
@@ -98,6 +100,7 @@ describe('GET /api/v1/profile/me — privacy', () => {
       bio: null,
       gender: null,
       looking_for: null,
+      intent: null,
       photos: [],
       updated_at: new Date(),
     };
@@ -194,5 +197,37 @@ describe('POST /api/v1/profile/me/photos', () => {
       .send({ url: 'not-a-url' });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+// --- AC: intent field accepted and validated ---
+describe('PUT /api/v1/profile/me — intent field', () => {
+  it('accepts valid intent without error', async () => {
+    const res = await request(app)
+      .put('/api/v1/profile/me')
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .send({ display_name: 'Test User', birth_date: '1990-06-15', intent: 'casual' });
+    expect(res.status).toBe(200);
+    expect(res.body.profile).toBeDefined();
+  });
+
+  it('returns 400 VALIDATION_ERROR for invalid intent', async () => {
+    const res = await request(app)
+      .put('/api/v1/profile/me')
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .send({ display_name: 'Test User', birth_date: '1990-06-15', intent: 'invalid' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+});
+
+// --- AC: upload endpoint rejects missing file ---
+describe('POST /api/v1/profile/me/photos/upload', () => {
+  it('returns 400 NO_FILE when no file is attached', async () => {
+    const res = await request(app)
+      .post('/api/v1/profile/me/photos/upload')
+      .set('Authorization', `Bearer ${makeAccessToken()}`);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('NO_FILE');
   });
 });

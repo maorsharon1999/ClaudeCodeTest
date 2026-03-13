@@ -18,4 +18,5 @@ module.exports = {
   jwtAccessExpirySeconds: 15 * 60,        // 15 minutes
   jwtRefreshExpirySeconds: 7 * 24 * 3600, // 7 days
   adminSecret: process.env.ADMIN_SECRET || '',
+  publicUrl: process.env.PUBLIC_URL || 'http://localhost:3000',
 };

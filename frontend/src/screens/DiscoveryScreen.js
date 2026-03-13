@@ -3,6 +3,7 @@ import {
   View,
   Text,
   FlatList,
+  Image,
   ActivityIndicator,
   TouchableOpacity,
   StyleSheet,
@@ -149,9 +150,22 @@ export default function DiscoveryScreen() {
           renderItem={({ item }) => (
             <View style={[styles.card, theme.shadows.card]}>
               <View style={styles.cardHeader}>
-                <Text style={styles.cardName}>
-                  {item.display_name}, {item.age}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  {item.photos?.[0] ? (
+                    <Image source={{ uri: item.photos[0] }} style={styles.cardThumb} />
+                  ) : (
+                    <View style={[styles.cardThumb, styles.cardThumbFallback]}>
+                      <Text style={styles.cardThumbInitial}>
+                        {item.display_name?.[0]?.toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardName}>
+                      {item.display_name}, {item.age}
+                    </Text>
+                  </View>
+                </View>
                 <View style={[
                   styles.badge,
                   item.proximity_bucket === 'nearby' ? styles.badgeNearby : styles.badgeSameArea,
@@ -215,6 +229,22 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.borderSubtle,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardThumb: {
+    width: 52,
+    height: 52,
+    borderRadius: theme.radii.sm,
+    marginRight: theme.spacing.md,
+  },
+  cardThumbFallback: {
+    backgroundColor: theme.colors.bgDim,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardThumbInitial: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.colors.textMuted,
+  },
   cardName: { fontSize: 17, fontWeight: '700', color: theme.colors.textBody },
   cardBio: { fontSize: 14, color: '#666', marginTop: 8, lineHeight: 20 },
   badge: {

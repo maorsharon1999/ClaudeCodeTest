@@ -3,6 +3,7 @@ const pool = require('../db/pool');
 
 const VALID_GENDERS      = ['man', 'woman', 'nonbinary', 'other'];
 const VALID_LOOKING_FOR  = ['men', 'women', 'everyone', 'nonbinary'];
+const VALID_INTENTS      = ['casual', 'serious', 'open'];
 const MAX_PHOTOS         = 3;
 
 function ageFromBirthDate(birthDate) {
@@ -16,7 +17,7 @@ function ageFromBirthDate(birthDate) {
 
 async function getProfile(userId) {
   const { rows } = await pool.query(
-    `SELECT user_id, display_name, birth_date, bio, gender, looking_for, photos, updated_at
+    `SELECT user_id, display_name, birth_date, bio, gender, looking_for, intent, photos, updated_at
      FROM profiles WHERE user_id = $1`,
     [userId]
   );
@@ -24,7 +25,7 @@ async function getProfile(userId) {
 }
 
 async function upsertProfile(userId, body) {
-  const { display_name, birth_date, bio, gender, looking_for } = body;
+  const { display_name, birth_date, bio, gender, looking_for, intent } = body;
 
   // Validate required fields
   if (!display_name || typeof display_name !== 'string' || !display_name.trim()) {
@@ -60,19 +61,24 @@ async function upsertProfile(userId, body) {
     const e = new Error(`looking_for must be one of: ${VALID_LOOKING_FOR.join(', ')}.`);
     e.status = 400; e.code = 'VALIDATION_ERROR'; throw e;
   }
+  if (intent && !VALID_INTENTS.includes(intent)) {
+    const e = new Error(`intent must be one of: ${VALID_INTENTS.join(', ')}.`);
+    e.status = 400; e.code = 'VALIDATION_ERROR'; throw e;
+  }
 
   const { rows } = await pool.query(
-    `INSERT INTO profiles (user_id, display_name, birth_date, bio, gender, looking_for, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    `INSERT INTO profiles (user_id, display_name, birth_date, bio, gender, looking_for, intent, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
      ON CONFLICT (user_id) DO UPDATE
        SET display_name = EXCLUDED.display_name,
            birth_date   = EXCLUDED.birth_date,
            bio          = EXCLUDED.bio,
            gender       = EXCLUDED.gender,
            looking_for  = EXCLUDED.looking_for,
+           intent       = EXCLUDED.intent,
            updated_at   = NOW()
-     RETURNING user_id, display_name, birth_date, bio, gender, looking_for, photos, updated_at`,
-    [userId, display_name.trim(), birth_date, bio || null, gender || null, looking_for || null]
+     RETURNING user_id, display_name, birth_date, bio, gender, looking_for, intent, photos, updated_at`,
+    [userId, display_name.trim(), birth_date, bio || null, gender || null, looking_for || null, intent || null]
   );
 
   return rows[0];

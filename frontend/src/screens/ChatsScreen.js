@@ -73,6 +73,7 @@ export default function ChatsScreen({ navigation }) {
             threadId: item.thread_id,
             displayName: other.display_name,
             otherUserId: other.user_id,
+            otherUserPhoto: other.photos?.[0] || null,
           })
         }
         accessibilityRole="button"

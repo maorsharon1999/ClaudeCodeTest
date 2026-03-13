@@ -1,9 +1,12 @@
 'use strict';
 const express        = require('express');
+const multer         = require('multer');
 const { authRequired } = require('../middleware/auth');
 const profileService   = require('../services/profileService');
+const config           = require('../config');
 
 const router = express.Router();
+const upload = multer({ dest: 'uploads/', limits: { fileSize: 5 * 1024 * 1024 } });
 
 // All profile routes require authentication
 router.use(authRequired);
@@ -26,6 +29,21 @@ router.put('/me', async (req, res, next) => {
   try {
     const profile = await profileService.upsertProfile(req.userId, req.body);
     return res.status(200).json({ profile });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /profile/me/photos/upload  (multipart file upload)
+router.post('/me/photos/upload', upload.single('photo'), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: { code: 'NO_FILE', message: 'No file provided.' } });
+    if (!['image/jpeg', 'image/png'].includes(req.file.mimetype)) {
+      return res.status(400).json({ error: { code: 'INVALID_TYPE', message: 'Only JPEG and PNG are allowed.' } });
+    }
+    const url = `${config.publicUrl}/uploads/${req.file.filename}`;
+    const photos = await profileService.addPhoto(req.userId, url);
+    return res.status(200).json({ photos });
   } catch (err) {
     next(err);
   }

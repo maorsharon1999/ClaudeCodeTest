@@ -72,6 +72,8 @@ export default function ProfileEditScreen({ navigation }) {
         initialValues={profile}
         onSave={handleSave}
         saving={saving}
+        photos={profile.photos || []}
+        onPhotosChange={(p) => setProfile((prev) => ({ ...prev, photos: p }))}
       />
     </Animated.View>
   );
