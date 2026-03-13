@@ -20,11 +20,15 @@ const internalRoutes   = require('./routes/internal');
 const { errorHandler } = require('./middleware/errorHandler');
 const pool             = require('./db/pool');
 
+// Ensure voice upload directory exists
+require('fs').mkdirSync(path.join(__dirname, '..', 'uploads', 'voice'), { recursive: true });
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use('/uploads/voice', express.static(path.join(__dirname, '..', 'uploads', 'voice')));
 
 // Health check
 app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));

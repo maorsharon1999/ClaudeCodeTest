@@ -15,8 +15,10 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getMessages, sendMessage, blockUser, reportUser } from '../api/chat';
+import { getMessages, sendMessage, blockUser, reportUser, uploadVoiceNote } from '../api/chat';
 import Toast from '../components/Toast';
+import VoiceNoteBubble from '../components/VoiceNoteBubble';
+import VoiceNoteRecorder from '../components/VoiceNoteRecorder';
 import { theme } from '../theme';
 
 function formatTime(isoString) {
@@ -45,6 +47,7 @@ export default function ThreadScreen({ route, navigation }) {
   const [toastKey, setToastKey] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
 
   // Entrance animation
   const enterAnim = useRef(new Animated.Value(0)).current;
@@ -151,6 +154,19 @@ export default function ThreadScreen({ route, navigation }) {
     }
   }
 
+  async function handleSendVoiceNote({ uri, durationS }) {
+    setIsRecording(false);
+    try {
+      const msg = await uploadVoiceNote(threadId, uri, durationS);
+      setMessages((prev) => [...prev, msg]);
+      setTimeout(() => {
+        listRef.current?.scrollToEnd({ animated: true });
+      }, 50);
+    } catch {
+      showToast('Could not send voice note. Please try again.');
+    }
+  }
+
   function submitReport(reason) {
     reportUser(otherUserId, reason)
       .then(() => showToast('Report submitted. Thank you.'))
@@ -227,19 +243,28 @@ export default function ThreadScreen({ route, navigation }) {
     const isMine = item.is_mine;
     return (
       <View style={[styles.bubbleRow, isMine ? styles.bubbleRowMine : styles.bubbleRowTheirs]}>
-        <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
-          <Text style={isMine ? styles.bubbleTextMine : styles.bubbleTextTheirs}>
-            {item.body}
-          </Text>
-          <Text style={isMine ? styles.bubbleTimeMine : styles.bubbleTimeTheirs}>
-            {formatTime(item.sent_at)}
-          </Text>
-        </View>
+        {item.voice_note_url ? (
+          <VoiceNoteBubble
+            url={item.voice_note_url}
+            durationS={item.voice_note_duration_s}
+            isOwn={isMine}
+          />
+        ) : (
+          <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
+            <Text style={isMine ? styles.bubbleTextMine : styles.bubbleTextTheirs}>
+              {item.body}
+            </Text>
+            <Text style={isMine ? styles.bubbleTimeMine : styles.bubbleTimeTheirs}>
+              {formatTime(item.sent_at)}
+            </Text>
+          </View>
+        )}
       </View>
     );
   }
 
   const canSend = inputText.trim().length > 0 && !sending;
+  const showMicButton = inputText.trim().length === 0 && !isRecording;
 
   return (
     <Animated.View style={[styles.container, { marginBottom: kbHeight }, enterStyle]}>
@@ -259,29 +284,47 @@ export default function ThreadScreen({ route, navigation }) {
         }
       />
 
-      <View style={[styles.inputBar, { paddingBottom: kbHeight > 0 ? 8 : Math.max(insets.bottom, 8) }]}>
-        <TextInput
-          style={styles.input}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Type a message..."
-          placeholderTextColor={theme.colors.textFaint}
-          maxLength={1000}
-          multiline
-          numberOfLines={1}
-          returnKeyType="default"
-          accessibilityLabel="Message input"
+      {isRecording ? (
+        <VoiceNoteRecorder
+          onCancel={() => setIsRecording(false)}
+          onSend={handleSendVoiceNote}
         />
-        <TouchableOpacity
-          style={[styles.sendBtn, !canSend && styles.sendBtnDisabled]}
-          onPress={handleSend}
-          disabled={!canSend}
-          accessibilityRole="button"
-          accessibilityLabel="Send message"
-        >
-          <Text style={styles.sendBtnText}>Send</Text>
-        </TouchableOpacity>
-      </View>
+      ) : (
+        <View style={[styles.inputBar, { paddingBottom: kbHeight > 0 ? 8 : Math.max(insets.bottom, 8) }]}>
+          <TextInput
+            style={styles.input}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Type a message..."
+            placeholderTextColor={theme.colors.textFaint}
+            maxLength={1000}
+            multiline
+            numberOfLines={1}
+            returnKeyType="default"
+            accessibilityLabel="Message input"
+          />
+          {showMicButton ? (
+            <TouchableOpacity
+              style={styles.sendBtn}
+              onPress={() => setIsRecording(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Record voice note"
+            >
+              <Text style={styles.sendBtnText}>{'\uD83C\uDFA4'}</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.sendBtn, !canSend && styles.sendBtnDisabled]}
+              onPress={handleSend}
+              disabled={!canSend}
+              accessibilityRole="button"
+              accessibilityLabel="Send message"
+            >
+              <Text style={styles.sendBtnText}>Send</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       <Toast key={toastKey} message={toastMsg} visible={!!toastMsg} />
     </Animated.View>

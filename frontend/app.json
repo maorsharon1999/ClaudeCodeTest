@@ -18,7 +18,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.bubble.mvp",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Bubble uses your photos for your profile."
+        "NSPhotoLibraryUsageDescription": "Bubble uses your photos for your profile.",
+        "NSMicrophoneUsageDescription": "Bubble uses your microphone to record voice notes."
       }
     },
     "android": {
@@ -26,7 +27,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#6C47FF"
       },
-      "package": "com.bubble.mvp"
+      "package": "com.bubble.mvp",
+      "permissions": ["RECORD_AUDIO"]
     },
     "web": {
       "favicon": "./assets/favicon.png"

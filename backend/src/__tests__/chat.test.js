@@ -85,12 +85,15 @@ jest.mock('../db/pool', () => ({
       };
     }
 
-    // Insert message
+    // Insert message (text or voice note)
     if (sql.includes('INSERT INTO chat_messages')) {
+      const isVoiceNote = sql.includes('voice_note_url');
       return {
         rows: [{
           id: MSG_ID,
-          body: params[2],
+          body: isVoiceNote ? null : params[2],
+          voice_note_url: isVoiceNote ? params[2] : null,
+          voice_note_duration_s: isVoiceNote ? params[3] : null,
           sent_at: new Date().toISOString(),
         }],
       };
@@ -581,6 +584,68 @@ describe('GET /internal/reports', () => {
       .set('Authorization', `Bearer ${process.env.ADMIN_SECRET}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body.reports)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/threads/:id/voice-notes
+// ---------------------------------------------------------------------------
+describe('POST /api/v1/threads/:id/voice-notes', () => {
+  it('returns 401 without token', async () => {
+    const res = await request(app)
+      .post(`/api/v1/threads/${THREAD_ID}/voice-notes`);
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 400 NO_FILE when no file is attached', async () => {
+    const res = await request(app)
+      .post(`/api/v1/threads/${THREAD_ID}/voice-notes`)
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .field('duration_s', '5');
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('NO_FILE');
+  });
+
+  it('returns 400 INVALID_TYPE when MIME type is not allowed', async () => {
+    const res = await request(app)
+      .post(`/api/v1/threads/${THREAD_ID}/voice-notes`)
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .attach('audio', Buffer.from('fake-audio'), { filename: 'note.ogg', contentType: 'audio/ogg' })
+      .field('duration_s', '5');
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_TYPE');
+  });
+
+  it('returns 400 INVALID_DURATION when duration_s is 0', async () => {
+    const res = await request(app)
+      .post(`/api/v1/threads/${THREAD_ID}/voice-notes`)
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .attach('audio', Buffer.from('fake-audio'), { filename: 'note.m4a', contentType: 'audio/m4a' })
+      .field('duration_s', '0');
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_DURATION');
+  });
+
+  it('returns 400 INVALID_DURATION when duration_s is 61', async () => {
+    const res = await request(app)
+      .post(`/api/v1/threads/${THREAD_ID}/voice-notes`)
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .attach('audio', Buffer.from('fake-audio'), { filename: 'note.m4a', contentType: 'audio/m4a' })
+      .field('duration_s', '61');
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_DURATION');
+  });
+
+  it('returns 201 with message containing voice_note_url and voice_note_duration_s on success', async () => {
+    const res = await request(app)
+      .post(`/api/v1/threads/${THREAD_ID}/voice-notes`)
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .attach('audio', Buffer.from('fake-audio'), { filename: 'note.m4a', contentType: 'audio/m4a' })
+      .field('duration_s', '10');
+    expect(res.status).toBe(201);
+    expect(res.body.message).toHaveProperty('voice_note_url');
+    expect(res.body.message).toHaveProperty('voice_note_duration_s');
+    expect(res.body.message.is_mine).toBe(true);
   });
 });
 

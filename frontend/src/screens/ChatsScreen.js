@@ -62,7 +62,9 @@ export default function ChatsScreen({ navigation }) {
     const name = other.display_name || '';
     const age = other.age ? ', ' + other.age : '';
     const msgBody = item.last_message?.body || '';
-    const preview = msgBody ? msgBody.slice(0, 60) + (msgBody.length > 60 ? '…' : '') : '';
+    // Backend sets body to 'Voice note' string for voice-only messages in preview
+    const isVoiceOnly = msgBody === 'Voice note';
+    const preview = (msgBody && !isVoiceOnly) ? msgBody.slice(0, 60) + (msgBody.length > 60 ? '…' : '') : '';
     const time = relativeTime(item.last_message?.sent_at);
 
     return (
@@ -86,6 +88,10 @@ export default function ChatsScreen({ navigation }) {
         {preview ? (
           <Text style={styles.cardPreview} numberOfLines={1} ellipsizeMode="tail">
             {preview}
+          </Text>
+        ) : isVoiceOnly ? (
+          <Text style={[styles.cardPreview, { color: theme.colors.textMuted }]} numberOfLines={1}>
+            Voice note
           </Text>
         ) : null}
       </TouchableOpacity>
