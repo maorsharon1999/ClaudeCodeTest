@@ -23,6 +23,11 @@ export function configureInterceptors({ getAccessToken, refreshAccessToken, onAu
   _onAuthFailure = onAuthFailure;
 }
 
+// Exported so non-axios callers (e.g. expo-av) can read the current token.
+export function getAccessToken() {
+  return _getAccessToken ? _getAccessToken() : null;
+}
+
 // Request interceptor: attach bearer token when available
 client.interceptors.request.use((config) => {
   if (_getAccessToken) {

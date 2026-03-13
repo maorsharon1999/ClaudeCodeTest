@@ -6,6 +6,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Audio } from 'expo-av';
+import { getAccessToken } from '../api/client';
 import { theme } from '../theme';
 
 // Module-level ref: only one voice note plays at a time across the whole chat list.
@@ -56,8 +57,13 @@ export default function VoiceNoteBubble({ url, durationS, isOwn }) {
         playsInSilentModeIOS: true,
       });
 
+      // expo-av cannot set custom HTTP headers, so we append the JWT as a
+      // query param. The backend /voice-notes/:filename route accepts ?token=.
+      const token = getAccessToken();
+      const audioUri = token ? `${url}?token=${encodeURIComponent(token)}` : url;
+
       const { sound } = await Audio.Sound.createAsync(
-        { uri: url },
+        { uri: audioUri },
         { shouldPlay: true }
       );
 
