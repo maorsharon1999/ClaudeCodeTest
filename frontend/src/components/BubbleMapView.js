@@ -8,7 +8,7 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { theme } from '../theme';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -42,6 +42,7 @@ export default function BubbleMapView({ users, myLocation, signalledIds, onSigna
   return (
     <View style={styles.container}>
       <MapView
+        provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={{
           latitude: myLocation.latitude,

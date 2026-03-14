@@ -105,6 +105,14 @@ export default function DiscoveryScreen() {
     }
   }
 
+  if (permissionStatus === null) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={theme.colors.brand} />
+      </View>
+    );
+  }
+
   if (permissionStatus === 'denied') {
     return (
       <View style={styles.center}>
