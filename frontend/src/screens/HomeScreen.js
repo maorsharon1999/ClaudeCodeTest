@@ -199,34 +199,48 @@ export default function HomeScreen({ navigation }) {
         {isVisible ? 'Others nearby can see you.' : 'You are hidden from everyone.'}
       </Text>
 
-      <TouchableOpacity
-        style={[homeStyles.signalsBtn, theme.shadows.card]}
-        onPress={() => navigation.navigate('Signals')}
-        accessibilityRole="button"
-        accessibilityLabel="View signals"
-      >
-        <Text style={homeStyles.signalsBtnText}>
-          {'Signals' + (signalCount > 0 ? ' (' + signalCount + ')' : '')}
-        </Text>
-      </TouchableOpacity>
+      <View style={homeStyles.navRow}>
+        <TouchableOpacity
+          style={homeStyles.navItem}
+          onPress={() => navigation.navigate('Signals')}
+          accessibilityRole="button"
+          accessibilityLabel="View signals"
+        >
+          <View style={homeStyles.navIconWrap}>
+            <Text style={homeStyles.navIconGlyph}>⚡</Text>
+            {signalCount > 0 && (
+              <View style={homeStyles.badge}>
+                <Text style={homeStyles.badgeText}>{signalCount}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={homeStyles.navLabel}>Signals</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[homeStyles.chatsBtn, theme.shadows.card]}
-        onPress={() => navigation.navigate('Chats')}
-        accessibilityRole="button"
-        accessibilityLabel="View chats"
-      >
-        <Text style={homeStyles.chatsBtnText}>Chats</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={homeStyles.navItem}
+          onPress={() => navigation.navigate('Chats')}
+          accessibilityRole="button"
+          accessibilityLabel="View chats"
+        >
+          <View style={homeStyles.navIconWrap}>
+            <Text style={homeStyles.navIconGlyph}>✉</Text>
+          </View>
+          <Text style={homeStyles.navLabel}>Chats</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[homeStyles.discoverBtn, theme.shadows.card]}
-        onPress={() => navigation.navigate('Discovery')}
-        accessibilityRole="button"
-        accessibilityLabel="Find people nearby"
-      >
-        <Text style={homeStyles.discoverText}>Find People Nearby</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={homeStyles.navItem}
+          onPress={() => navigation.navigate('Discovery')}
+          accessibilityRole="button"
+          accessibilityLabel="Find people nearby"
+        >
+          <View style={homeStyles.navIconWrap}>
+            <Text style={homeStyles.navIconGlyph}>◎</Text>
+          </View>
+          <Text style={homeStyles.navLabel}>Nearby</Text>
+        </TouchableOpacity>
+      </View>
 
       <TouchableOpacity
         style={homeStyles.signOutBtn}
@@ -297,30 +311,44 @@ const homeStyles = StyleSheet.create({
   toggleLoading: { opacity: 0.7 },
   toggleText: { color: '#fff', fontSize: 18, fontWeight: '700', textAlign: 'center', letterSpacing: 1 },
   hint: { marginTop: 28, fontSize: 14, color: theme.colors.textMuted, textAlign: 'center' },
-  signalsBtn: {
-    marginTop: 24,
-    backgroundColor: theme.colors.success,
-    borderRadius: theme.radii.pill,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
+  navRow: {
+    flexDirection: 'row',
+    marginTop: 36,
+    gap: 32,
   },
-  signalsBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  chatsBtn: {
-    marginTop: 12,
-    backgroundColor: theme.colors.accent,
-    borderRadius: theme.radii.pill,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
+  navItem: {
+    alignItems: 'center',
   },
-  chatsBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  discoverBtn: {
-    marginTop: 12,
-    backgroundColor: theme.colors.brand,
-    borderRadius: theme.radii.pill,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
+  navIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.bgWash,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  discoverText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  navIconGlyph: {
+    fontSize: 24,
+  },
+  navLabel: {
+    marginTop: 6,
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: theme.colors.error,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
   signOutBtn: {
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 48 : 28,
