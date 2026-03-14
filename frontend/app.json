@@ -35,6 +35,11 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      ["expo-splash-screen", {
+        "image": "./assets/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#6C47FF"
+      }],
       ["expo-secure-store"],
       ["expo-location", {
         "locationWhenInUsePermission": "Bubble needs your location to find people nearby."
