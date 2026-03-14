@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
   Animated,
   Platform,
 } from 'react-native';
-import { setVisibility } from '../api/profile';
+import { setVisibility, getProfile } from '../api/profile';
 import { useAuth } from '../context/AuthContext';
 import { getIncomingSignals } from '../api/signals';
 import { useFocusEffect } from '@react-navigation/native';
@@ -27,6 +28,7 @@ export default function HomeScreen({ navigation }) {
   const [toastMsg, setToastMsg] = useState('');
   const [toastKey, setToastKey] = useState(0);
   const [signalCount, setSignalCount] = useState(0);
+  const [profilePhoto, setProfilePhoto] = useState(null);
 
   // Entrance animation
   const enterAnim = useRef(new Animated.Value(0)).current;
@@ -91,7 +93,13 @@ export default function HomeScreen({ navigation }) {
     }
   }, [isVisible]);
 
-  useEffect(() => { resetVisibilityOnMount(); }, []);
+  useEffect(() => {
+    resetVisibilityOnMount();
+    getProfile().then(p => {
+      const url = p?.photos?.[0]?.url;
+      if (url) setProfilePhoto(url);
+    }).catch(() => {});
+  }, []);
   useFocusEffect(
     useCallback(() => {
       getIncomingSignals().then((s) => setSignalCount(s.length)).catch(() => {});
@@ -163,7 +171,14 @@ export default function HomeScreen({ navigation }) {
           accessibilityState={{ checked: isVisible }}
           accessibilityLabel={isVisible ? 'Go invisible' : 'Go visible'}
         >
-          <Animated.View style={[homeStyles.orbInner, { backgroundColor: orbBg }]}>
+          {profilePhoto && (
+            <Image
+              source={{ uri: profilePhoto }}
+              style={homeStyles.orbPhoto}
+              resizeMode="cover"
+            />
+          )}
+          <Animated.View style={[homeStyles.orbInner, { backgroundColor: profilePhoto ? 'rgba(0,0,0,0.28)' : orbBg }]}>
             {loading ? (
               <ActivityIndicator size="large" color="#fff" />
             ) : (
@@ -254,6 +269,11 @@ const homeStyles = StyleSheet.create({
     height: 200,
     borderRadius: 100,
     overflow: 'hidden',
+  },
+  orbPhoto: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
   },
   orbInner: {
     width: 200,
