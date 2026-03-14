@@ -38,8 +38,7 @@
       ["expo-secure-store"],
       ["expo-location", {
         "locationWhenInUsePermission": "Bubble needs your location to find people nearby."
-      }],
-      ["react-native-maps"]
+      }]
     ]
   }
 }
