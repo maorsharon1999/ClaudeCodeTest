@@ -4,7 +4,8 @@ import { Platform } from 'react-native';
 import { configureInterceptors } from '../api/client';
 import { refreshToken as apiRefreshToken, deleteSession } from '../api/auth';
 
-const REFRESH_TOKEN_KEY = 'bubble_refresh_token';
+const REFRESH_TOKEN_KEY   = 'bubble_refresh_token';
+const PROFILE_COMPLETE_KEY = 'bubble_profile_complete';
 // Note: expo-secure-store 14.x (SDK 54) changed its internal key storage format on Android.
 // Existing Android users upgrading from SDK 50 will have their stored refresh token
 // silently unreadable — doRefresh() will throw "No refresh token" and authState becomes false.
@@ -58,6 +59,7 @@ export function AuthProvider({ children }) {
     setAccessToken(null);
     accessTokenRef.current = null;
     await storage.deleteItem(REFRESH_TOKEN_KEY).catch(() => {});
+    await storage.deleteItem(PROFILE_COMPLETE_KEY).catch(() => {});
     setAuthState(false);
   }, []);
 
@@ -75,9 +77,25 @@ export function AuthProvider({ children }) {
     async function init() {
       try {
         await doRefresh();
+        // Refresh succeeded — restore profile completion state from storage,
+        // then verify against the server in the background.
+        const stored = await storage.getItem(PROFILE_COMPLETE_KEY).catch(() => null);
+        setProfileComplete(stored === '1');
         setAuthState(true);
-      } catch {
-        setAuthState(false);
+      } catch (err) {
+        // Only force logout when the server explicitly rejected the token (401).
+        // Network errors (backend unreachable, timeout) must not log the user out.
+        const isAuthRejection = err.response?.status === 401;
+        if (isAuthRejection) {
+          await storage.deleteItem(REFRESH_TOKEN_KEY).catch(() => {});
+          await storage.deleteItem(PROFILE_COMPLETE_KEY).catch(() => {});
+          setAuthState(false);
+        } else {
+          // Backend unreachable — keep session alive using persisted state.
+          const stored = await storage.getItem(PROFILE_COMPLETE_KEY).catch(() => null);
+          setProfileComplete(stored === '1');
+          setAuthState(true);
+        }
       }
     }
     init();
@@ -85,6 +103,7 @@ export function AuthProvider({ children }) {
 
   const signIn = useCallback(async ({ access_token, refresh_token, profile_complete }) => {
     await storage.setItem(REFRESH_TOKEN_KEY, refresh_token);
+    await storage.setItem(PROFILE_COMPLETE_KEY, profile_complete ? '1' : '0').catch(() => {});
     setAccessToken(access_token);
     accessTokenRef.current = access_token;
     setProfileComplete(!!profile_complete);
@@ -92,6 +111,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const markProfileComplete = useCallback(() => {
+    storage.setItem(PROFILE_COMPLETE_KEY, '1').catch(() => {});
     setProfileComplete(true);
   }, []);
 
@@ -105,6 +125,7 @@ export function AuthProvider({ children }) {
     setAccessToken(null);
     accessTokenRef.current = null;
     await storage.deleteItem(REFRESH_TOKEN_KEY).catch(() => {});
+    await storage.deleteItem(PROFILE_COMPLETE_KEY).catch(() => {});
     setAuthState(false);
   }, []);
 
