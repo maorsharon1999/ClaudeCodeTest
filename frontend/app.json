@@ -29,7 +29,7 @@
       },
       "package": "com.bubble.mvp",
       "permissions": ["RECORD_AUDIO"],
-      "config": { "googleMaps": { "apiKey": "PLACEHOLDER_REPLACE_ME" } }
+      "config": { "googleMaps": { "apiKey": "AIzaSyBm9jrLibVvvD-BM-nZx-lQKi_py_xJaYo" } }
     },
     "web": {
       "favicon": "./assets/favicon.png"

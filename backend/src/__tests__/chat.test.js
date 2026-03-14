@@ -651,6 +651,64 @@ describe('POST /api/v1/threads/:id/voice-notes', () => {
     expect(res.body.message).toHaveProperty('voice_note_duration_s');
     expect(res.body.message.is_mine).toBe(true);
   });
+
+  it('returns 400 INVALID_TYPE when MIME is audio/m4a but magic bytes are not a valid audio container', async () => {
+    // PNG magic bytes: \x89PNG — passes MIME check (audio/m4a is allowed) but fails magic-bytes gate.
+    const pngMagic = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D]);
+    const res = await request(app)
+      .post(`/api/v1/threads/${THREAD_ID}/voice-notes`)
+      .set('Authorization', `Bearer ${makeAccessToken()}`)
+      .attach('audio', pngMagic, { filename: 'note.m4a', contentType: 'audio/m4a' })
+      .field('duration_s', '10');
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_TYPE');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /voice-notes/:filename — authenticated audio stream
+// ---------------------------------------------------------------------------
+describe('GET /voice-notes/:filename', () => {
+  it('returns 401 with no token', async () => {
+    const res = await request(app).get('/voice-notes/sample.m4a');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 401 with an invalid Bearer token', async () => {
+    const res = await request(app)
+      .get('/voice-notes/sample.m4a')
+      .set('Authorization', 'Bearer totally.invalid.token');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 401 with an invalid ?token= query param', async () => {
+    const res = await request(app).get('/voice-notes/sample.m4a?token=bad.token.here');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 200 or 404 (not 401) with valid Bearer token', async () => {
+    const res = await request(app)
+      .get('/voice-notes/sample.m4a')
+      .set('Authorization', `Bearer ${makeAccessToken()}`);
+    // File does not exist on disk in test env → 404, but auth passed (not 401)
+    expect([200, 404]).toContain(res.status);
+  });
+
+  it('returns 200 or 404 (not 401) with valid ?token= query param', async () => {
+    const res = await request(app)
+      .get(`/voice-notes/sample.m4a?token=${makeAccessToken()}`);
+    // File does not exist on disk in test env → 404, but auth passed (not 401)
+    expect([200, 404]).toContain(res.status);
+  });
+
+  it('returns 400 INVALID_FILENAME for path-traversal filename (encoded slash)', async () => {
+    // ..%2Fsecret decodes to ../secret which contains / — rejected by the safe-char regex
+    const res = await request(app)
+      .get('/voice-notes/..%2Fsecret')
+      .set('Authorization', `Bearer ${makeAccessToken()}`);
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_FILENAME');
+  });
 });
 
 describe('POST|DELETE /internal/users/:id/ban', () => {
