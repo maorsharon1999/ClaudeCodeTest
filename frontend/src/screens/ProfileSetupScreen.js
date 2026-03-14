@@ -355,7 +355,7 @@ export function ProfileForm({ initialValues = {}, onSave, saving, photos = [], o
 }
 
 export default function ProfileSetupScreen() {
-  const { markProfileComplete } = useAuth();
+  const { markProfileComplete, signOut } = useAuth();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
@@ -386,6 +386,14 @@ export default function ProfileSetupScreen() {
 
   return (
     <Animated.View style={[styles.flex, enterStyle]}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={signOut}
+        accessibilityRole="button"
+        accessibilityLabel="Go back"
+      >
+        <Text style={styles.backButtonText}>‹ Back</Text>
+      </TouchableOpacity>
       <Text style={styles.heading}>Set Up Your Profile</Text>
       <Text style={styles.subheading}>Tell us a bit about yourself.</Text>
       {saveError ? (
@@ -410,11 +418,22 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 10,
   },
+  backButton: {
+    paddingHorizontal: 24,
+    paddingTop: 52,
+    paddingBottom: 4,
+    alignSelf: 'flex-start',
+  },
+  backButtonText: {
+    fontSize: 17,
+    color: theme.colors.brand,
+    fontWeight: '500',
+  },
   heading: {
     ...theme.typography.titleMd,
     color: theme.colors.textPrimary,
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: 8,
     marginBottom: 4,
   },
   subheading: {
