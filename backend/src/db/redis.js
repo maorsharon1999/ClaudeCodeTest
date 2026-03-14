@@ -7,12 +7,9 @@ client.on('error', (err) => {
   console.error('Redis client error:', err.message);
 });
 
-let connected = false;
-
 async function getRedis() {
-  if (!connected) {
+  if (!client.isOpen) {
     await client.connect();
-    connected = true;
   }
   return client;
 }
