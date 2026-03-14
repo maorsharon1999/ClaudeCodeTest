@@ -96,8 +96,14 @@ export default function HomeScreen({ navigation }) {
   useEffect(() => {
     resetVisibilityOnMount();
     getProfile().then(p => {
-      const url = p?.photos?.[0]?.url;
-      if (url) setProfilePhoto(url);
+      const raw = p?.photos?.[0];
+      if (raw) {
+        // Replace localhost with the configured API host so device can reach it
+        const apiBase = process.env.EXPO_PUBLIC_API_URL || '';
+        const host = apiBase ? apiBase.replace('/api/v1', '') : '';
+        const url = host ? raw.replace(/^http:\/\/localhost:\d+/, host) : raw;
+        setProfilePhoto(url);
+      }
     }).catch(() => {});
   }, []);
   useFocusEffect(
@@ -178,10 +184,9 @@ export default function HomeScreen({ navigation }) {
               resizeMode="cover"
             />
           )}
-          <Animated.View style={[homeStyles.orbInner, { backgroundColor: profilePhoto ? 'rgba(0,0,0,0.28)' : orbBg }]}>
-            {loading ? (
-              <ActivityIndicator size="large" color="#fff" />
-            ) : (
+          <Animated.View style={[homeStyles.orbInner, { backgroundColor: profilePhoto ? 'rgba(0,0,0,0.15)' : orbBg }]}>
+            {loading && <ActivityIndicator size="large" color="#fff" />}
+            {!profilePhoto && !loading && (
               <Text style={homeStyles.toggleText}>
                 {isVisible ? 'GO INVISIBLE' : 'GO VISIBLE'}
               </Text>
