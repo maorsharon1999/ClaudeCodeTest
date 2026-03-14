@@ -8,10 +8,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
-  Keyboard,
   Alert,
   Animated,
   ActivityIndicator,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,13 +32,6 @@ function formatTime(isoString) {
 export default function ThreadScreen({ route, navigation }) {
   const { threadId, displayName, otherUserId, otherUserPhoto } = route.params || {};
   const insets = useSafeAreaInsets();
-  const [kbHeight, setKbHeight] = useState(0);
-
-  useEffect(() => {
-    const show = Keyboard.addListener('keyboardDidShow', (e) => setKbHeight(e.endCoordinates.height));
-    const hide = Keyboard.addListener('keyboardDidHide', () => setKbHeight(0));
-    return () => { show.remove(); hide.remove(); };
-  }, []);
 
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -267,7 +260,12 @@ export default function ThreadScreen({ route, navigation }) {
   const showMicButton = inputText.trim().length === 0 && !isRecording;
 
   return (
-    <Animated.View style={[styles.container, { marginBottom: kbHeight }, enterStyle]}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 44 : 0}
+    >
+    <Animated.View style={[styles.innerContainer, enterStyle]}>
       <FlatList
         ref={listRef}
         data={messages}
@@ -290,7 +288,7 @@ export default function ThreadScreen({ route, navigation }) {
           onSend={handleSendVoiceNote}
         />
       ) : (
-        <View style={[styles.inputBar, { paddingBottom: kbHeight > 0 ? 8 : Math.max(insets.bottom, 8) }]}>
+        <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
           <TextInput
             style={styles.input}
             value={inputText}
@@ -328,11 +326,13 @@ export default function ThreadScreen({ route, navigation }) {
 
       <Toast key={toastKey} message={toastMsg} visible={!!toastMsg} />
     </Animated.View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.bgBase },
+  innerContainer: { flex: 1 },
   list: { padding: 12, paddingBottom: 8 },
   bubbleRow: { flexDirection: 'row', marginBottom: 8 },
   bubbleRowMine: { justifyContent: 'flex-end' },

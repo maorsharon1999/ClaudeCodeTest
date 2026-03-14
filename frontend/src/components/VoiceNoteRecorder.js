@@ -80,11 +80,12 @@ export default function VoiceNoteRecorder({ onSend, onCancel }) {
     try {
       await rec.stopAndUnloadAsync();
       const uri = rec.getURI();
+      const elapsedMs = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
       const durationS =
         overrideDuration !== undefined
           ? overrideDuration
-          : Math.floor((Date.now() - startTimeRef.current) / 1000);
-      if (durationS < 1) {
+          : Math.max(1, Math.round(elapsedMs / 1000));
+      if (!uri || elapsedMs < 500) {
         onCancel();
         return;
       }
