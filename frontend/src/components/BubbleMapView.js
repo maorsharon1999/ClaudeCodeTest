@@ -10,10 +10,11 @@ import {
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { theme } from '../theme';
+import BubbleMarker from './BubbleMarker';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
-export default function BubbleMapView({ users, myLocation, signalledIds, onSignal }) {
+export default function BubbleMapView({ users, myLocation, signalledIds, onSignal, currentUserPhoto, currentUserName }) {
   const [selectedUser, setSelectedUser] = useState(null);
   const cardAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
 
@@ -53,41 +54,37 @@ export default function BubbleMapView({ users, myLocation, signalledIds, onSigna
         showsUserLocation={false}
         showsMyLocationButton={false}
       >
-        {/* My Location soft dot */}
-        <Marker coordinate={myLocation} anchor={{ x: 0.5, y: 0.5 }}>
-          <View style={[styles.myDot, theme.shadows.orb]} />
+        {/* My location — current user bubble marker */}
+        <Marker
+          coordinate={myLocation}
+          anchor={{ x: 0.5, y: 1.0 }}
+          tracksViewChanges={false}
+        >
+          <BubbleMarker
+            photoUrl={currentUserPhoto}
+            name={currentUserName}
+            isCurrentUser={true}
+          />
         </Marker>
 
         {/* Nearby user markers */}
-        {users.map((user) => {
-          const isNearby = user.proximity_bucket === 'nearby';
-          const initial = user.display_name?.[0]?.toUpperCase() ?? '?';
-          return (
-            <Marker
-              key={user.user_id}
-              coordinate={{
-                latitude: user.jittered_lat,
-                longitude: user.jittered_lng,
-              }}
-              anchor={{ x: 0.5, y: 0.5 }}
-              onPress={() => openCard(user)}
-            >
-              <View
-                style={[
-                  styles.markerCircle,
-                  isNearby ? styles.markerNearby : styles.markerSameArea,
-                  isNearby ? theme.shadows.orb : theme.shadows.card,
-                ]}
-              >
-                {user.photos?.[0] ? (
-                  <Image source={{ uri: user.photos[0] }} style={styles.markerImage} />
-                ) : (
-                  <Text style={styles.markerInitial}>{initial}</Text>
-                )}
-              </View>
-            </Marker>
-          );
-        })}
+        {users.map((user) => (
+          <Marker
+            key={user.user_id}
+            coordinate={{
+              latitude: user.jittered_lat,
+              longitude: user.jittered_lng,
+            }}
+            anchor={{ x: 0.5, y: 1.0 }}
+            tracksViewChanges={false}
+            onPress={() => openCard(user)}
+          >
+            <BubbleMarker
+              photoUrl={user.photos?.[0] ?? null}
+              name={user.display_name ?? null}
+            />
+          </Marker>
+        ))}
       </MapView>
 
       {/* Tap-outside overlay — sits behind the card, above the map */}
@@ -178,42 +175,7 @@ const styles = StyleSheet.create({
   map: {
     ...StyleSheet.absoluteFillObject,
   },
-  // My location: semi-transparent white dot with brand border and orb glow
-  myDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    borderWidth: 2,
-    borderColor: theme.colors.brand,
-  },
-  // User markers
-  markerCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.bgDim,
-  },
-  markerNearby: {
-    borderColor: '#6C47FF',
-  },
-  markerSameArea: {
-    borderColor: '#aaa',
-  },
-  markerImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
-  markerInitial: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: theme.colors.textBody,
-  },
+  // Marker styles moved to BubbleMarker component
   // Dismiss overlay (behind card, above map)
   dismissOverlay: {
     ...StyleSheet.absoluteFillObject,

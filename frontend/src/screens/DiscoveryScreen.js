@@ -14,6 +14,7 @@ import {
 import * as Location from 'expo-location';
 import { updateLocation, getNearbyUsers } from '../api/discovery';
 import { sendSignal, getOutgoingSignals } from '../api/signals';
+import { getProfile } from '../api/profile';
 import Toast from '../components/Toast';
 import BubbleMapView from '../components/BubbleMapView';
 import { theme } from '../theme';
@@ -30,6 +31,8 @@ export default function DiscoveryScreen() {
   const [toastKey, setToastKey] = useState(0);
   const [viewMode, setViewMode] = useState('list');
   const [myLocation, setMyLocation] = useState(null);
+  const [currentUserPhoto, setCurrentUserPhoto] = useState(null);
+  const [currentUserName, setCurrentUserName] = useState(null);
 
   // Entrance animation
   const enterAnim = useRef(new Animated.Value(0)).current;
@@ -79,6 +82,14 @@ export default function DiscoveryScreen() {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       setPermissionStatus(status);
+      // Fetch current user profile for map marker (non-blocking — failure is non-fatal)
+      try {
+        const profile = await getProfile();
+        setCurrentUserPhoto(profile?.photos?.[0] ?? null);
+        setCurrentUserName(profile?.display_name ?? null);
+      } catch {
+        // leave as null — BubbleMarker will show initials fallback
+      }
       if (status === 'granted') {
         await refresh();
       }
@@ -168,6 +179,8 @@ export default function DiscoveryScreen() {
           myLocation={myLocation}
           signalledIds={signalledIds}
           onSignal={handleSignal}
+          currentUserPhoto={currentUserPhoto}
+          currentUserName={currentUserName}
         />
       ) : viewMode === 'map' && !myLocation ? (
         <View style={styles.center}>
