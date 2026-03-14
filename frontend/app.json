@@ -25,7 +25,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#6C47FF"
+        "backgroundColor": "#ffffff"
       },
       "package": "com.bubble.mvp",
       "permissions": ["RECORD_AUDIO"],
