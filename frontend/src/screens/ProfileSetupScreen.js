@@ -354,8 +354,8 @@ export function ProfileForm({ initialValues = {}, onSave, saving, photos = [], o
   );
 }
 
-export default function ProfileSetupScreen() {
-  const { markProfileComplete, signOut } = useAuth();
+export default function ProfileSetupScreen({ navigation }) {
+  const { markProfileComplete } = useAuth();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
 
@@ -388,7 +388,7 @@ export default function ProfileSetupScreen() {
     <Animated.View style={[styles.flex, enterStyle]}>
       <TouchableOpacity
         style={styles.backButton}
-        onPress={signOut}
+        onPress={() => navigation.navigate('Home')}
         accessibilityRole="button"
         accessibilityLabel="Go back"
       >
