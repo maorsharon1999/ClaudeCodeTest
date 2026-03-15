@@ -3,6 +3,7 @@ const express    = require('express');
 const rateLimit  = require('express-rate-limit');
 const authService    = require('../services/authService');
 const profileService = require('../services/profileService');
+const { authRequired } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -74,6 +75,16 @@ router.delete('/session', async (req, res, next) => {
     }
     await authService.deleteSession(refresh_token);
     return res.status(200).json({ message: 'Session invalidated.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /auth/account — permanently delete account and all data
+router.delete('/account', authRequired, async (req, res, next) => {
+  try {
+    await authService.deleteAccount(req.userId);
+    return res.status(200).json({ message: 'Account deleted.' });
   } catch (err) {
     next(err);
   }

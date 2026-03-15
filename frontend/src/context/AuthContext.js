@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { configureInterceptors } from '../api/client';
-import { refreshToken as apiRefreshToken, deleteSession } from '../api/auth';
+import { refreshToken as apiRefreshToken, deleteSession, deleteAccount as apiDeleteAccount } from '../api/auth';
 
 const REFRESH_TOKEN_KEY   = 'bubble_refresh_token';
 const PROFILE_COMPLETE_KEY = 'bubble_profile_complete';
@@ -129,6 +129,15 @@ export function AuthProvider({ children }) {
     setAuthState(false);
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    await apiDeleteAccount();
+    setAccessToken(null);
+    accessTokenRef.current = null;
+    await storage.deleteItem(REFRESH_TOKEN_KEY).catch(() => {});
+    await storage.deleteItem(PROFILE_COMPLETE_KEY).catch(() => {});
+    setAuthState(false);
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -136,6 +145,7 @@ export function AuthProvider({ children }) {
         profileComplete,
         signIn,
         signOut,
+        deleteAccount,
         markProfileComplete,
       }}
     >

@@ -15,6 +15,8 @@ import DiscoveryScreen from '../screens/DiscoveryScreen';
 import SignalsScreen from '../screens/SignalsScreen';
 import ChatsScreen from '../screens/ChatsScreen';
 import ThreadScreen from '../screens/ThreadScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import BlockedUsersScreen from '../screens/BlockedUsersScreen';
 
 const AuthStack = createNativeStackNavigator();
 const AppStack = createNativeStackNavigator();
@@ -60,6 +62,16 @@ function AppNavigator() {
         name="Thread"
         component={ThreadScreen}
         options={({ route }) => ({ headerShown: true, title: route.params?.displayName || 'Chat' })}
+      />
+      <AppStack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{ headerShown: true, title: 'Settings' }}
+      />
+      <AppStack.Screen
+        name="BlockedUsers"
+        component={BlockedUsersScreen}
+        options={{ headerShown: true, title: 'Blocked Users' }}
       />
     </AppStack.Navigator>
   );

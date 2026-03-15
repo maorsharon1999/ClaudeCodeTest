@@ -137,9 +137,9 @@ export default function HomeScreen({ navigation }) {
     <Animated.View style={[homeStyles.container, enterStyle]}>
       <TouchableOpacity
         style={homeStyles.settingsBtn}
-        onPress={() => navigation.navigate('ProfileEdit')}
+        onPress={() => navigation.navigate('Settings')}
         accessibilityRole="button"
-        accessibilityLabel="Edit profile"
+        accessibilityLabel="Settings"
       >
         <Text style={homeStyles.settingsIcon}>&#9881;</Text>
       </TouchableOpacity>

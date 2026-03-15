@@ -212,4 +212,28 @@ async function deleteSession(incomingRefreshToken) {
   await revokeRefreshToken(payload.jti);
 }
 
-module.exports = { requestOtp, verifyOtp, refreshAccessToken, deleteSession };
+async function deleteAccount(userId) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Get phone_hash so we can clean up otp_attempts (no FK to users)
+    const { rows } = await client.query('SELECT phone_hash FROM users WHERE id = $1', [userId]);
+    if (rows.length > 0) {
+      await client.query('DELETE FROM otp_attempts WHERE phone_hash = $1', [rows[0].phone_hash]);
+    }
+
+    // Deleting from users cascades to: profiles, visibility_states, blocks, reports,
+    // signals (sender/recipient), chat_threads (user_a/user_b), chat_messages (sender)
+    await client.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = { requestOtp, verifyOtp, refreshAccessToken, deleteSession, deleteAccount };

@@ -23,3 +23,7 @@ export async function refreshToken(refresh_token) {
 export async function deleteSession(refresh_token) {
   await client.delete('/auth/session', { data: { refresh_token } });
 }
+
+export async function deleteAccount() {
+  await client.delete('/auth/account');
+}

@@ -16,6 +16,23 @@ const blockLimiter = rateLimit({
   message: { error: { code: 'RATE_LIMIT', message: 'Too many block actions. Try again later.' } },
 });
 
+// GET / — list blocked users with their profile info
+router.get('/', async (req, res, next) => {
+  try {
+    const { rows } = await require('../db/pool').query(
+      `SELECT b.blocked_id, p.display_name, p.photos
+       FROM blocks b
+       LEFT JOIN profiles p ON p.user_id = b.blocked_id
+       WHERE b.blocker_id = $1
+       ORDER BY b.created_at DESC`,
+      [req.userId]
+    );
+    return res.status(200).json({ blocks: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST / — block a user
 router.post('/', blockLimiter, async (req, res, next) => {
   try {
