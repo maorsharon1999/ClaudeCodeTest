@@ -1,12 +1,12 @@
 import client from './client';
 
-export async function requestOtp(phone) {
-  const response = await client.post('/auth/otp/request', { phone });
-  return response.data; // { expires_in }
+export async function registerEmail(email, password) {
+  const response = await client.post('/auth/register', { email, password });
+  return response.data; // { access_token, refresh_token, user_id, profile_complete }
 }
 
-export async function verifyOtp(phone, code) {
-  const response = await client.post('/auth/otp/verify', { phone, code });
+export async function loginEmail(email, password) {
+  const response = await client.post('/auth/login', { email, password });
   return response.data; // { access_token, refresh_token, user_id, profile_complete }
 }
 

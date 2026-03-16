@@ -215,9 +215,9 @@ async function deleteAccount(userId) {
   try {
     await client.query('BEGIN');
 
-    // Get phone_hash so we can clean up otp_attempts (no FK to users)
+    // Clean up otp_attempts (no FK to users) — only if user has a phone_hash
     const { rows } = await client.query('SELECT phone_hash FROM users WHERE id = $1', [userId]);
-    if (rows.length > 0) {
+    if (rows.length > 0 && rows[0].phone_hash) {
       await client.query('DELETE FROM otp_attempts WHERE phone_hash = $1', [rows[0].phone_hash]);
     }
 
@@ -232,6 +232,100 @@ async function deleteAccount(userId) {
   } finally {
     client.release();
   }
+}
+
+// --- Email + Password Auth ---
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function registerWithEmail(email, password) {
+  if (!email || !EMAIL_REGEX.test(email)) {
+    const err = new Error('A valid email address is required.');
+    err.status = 400;
+    err.code   = 'VALIDATION_ERROR';
+    throw err;
+  }
+  if (!password || password.length < 8) {
+    const err = new Error('Password must be at least 8 characters.');
+    err.status = 400;
+    err.code   = 'VALIDATION_ERROR';
+    throw err;
+  }
+
+  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+  let userId;
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id`,
+      [email.toLowerCase(), passwordHash]
+    );
+    userId = rows[0].id;
+  } catch (err) {
+    if (err.code === '23505') { // unique_violation
+      const e = new Error('An account with this email already exists.');
+      e.status = 409;
+      e.code   = 'EMAIL_TAKEN';
+      throw e;
+    }
+    throw err;
+  }
+
+  await pool.query(
+    `INSERT INTO visibility_states (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
+    [userId]
+  );
+
+  const { accessToken, refreshToken } = await issueTokensForUser(userId);
+  return { accessToken, refreshToken, userId };
+}
+
+async function loginWithEmail(email, password) {
+  if (!email || !password) {
+    const err = new Error('email and password are required.');
+    err.status = 400;
+    err.code   = 'VALIDATION_ERROR';
+    throw err;
+  }
+
+  const { rows } = await pool.query(
+    `SELECT id, password_hash, banned_at FROM users WHERE email = $1`,
+    [email.toLowerCase()]
+  );
+
+  if (rows.length === 0) {
+    const err = new Error('Invalid email or password.');
+    err.status = 401;
+    err.code   = 'INVALID_CREDENTIALS';
+    throw err;
+  }
+
+  const user = rows[0];
+
+  if (!user.password_hash) {
+    const err = new Error('Invalid email or password.');
+    err.status = 401;
+    err.code   = 'INVALID_CREDENTIALS';
+    throw err;
+  }
+
+  const match = await bcrypt.compare(password, user.password_hash);
+  if (!match) {
+    const err = new Error('Invalid email or password.');
+    err.status = 401;
+    err.code   = 'INVALID_CREDENTIALS';
+    throw err;
+  }
+
+  if (user.banned_at) {
+    const err = new Error('This account has been suspended.');
+    err.status = 403;
+    err.code   = 'ACCOUNT_BANNED';
+    throw err;
+  }
+
+  const { accessToken, refreshToken } = await issueTokensForUser(user.id);
+  return { accessToken, refreshToken, userId: user.id };
 }
 
 // --- Firebase Auth integration (Phase 1) ---
@@ -259,7 +353,7 @@ async function verifyFirebaseToken(idToken) {
  * Also upserts visibility_states for new users.
  * Returns { userId, isNew }.
  */
-async function findOrCreateByFirebaseUid(firebaseUid, phoneNumber) {
+async function findOrCreateByFirebaseUid(firebaseUid, phoneNumber, email) {
   // Try to find existing user
   const { rows: existing } = await pool.query(
     'SELECT id FROM users WHERE firebase_uid = $1',
@@ -293,13 +387,33 @@ async function findOrCreateByFirebaseUid(firebaseUid, phoneNumber) {
       [phoneHash, firebaseUid]
     );
     userId = created[0].id;
-  } else {
-    // No phone number (shouldn't happen with Phone Auth, but handle gracefully)
-    const { rows: created } = await pool.query(
-      `INSERT INTO users (phone_hash, firebase_uid)
-       VALUES ($1, $2)
+  } else if (email) {
+    // Email-based Firebase auth (e.g. Firebase Email/Password or Google sign-in)
+    // Try to link to existing email user first
+    const { rows: linked } = await pool.query(
+      `UPDATE users SET firebase_uid = $1, updated_at = NOW()
+       WHERE email = $2 AND firebase_uid IS NULL
        RETURNING id`,
-      [`fb:${firebaseUid}`, firebaseUid]
+      [firebaseUid, email.toLowerCase()]
+    );
+    if (linked.length > 0) {
+      return { userId: linked[0].id, isNew: false };
+    }
+    const { rows: created } = await pool.query(
+      `INSERT INTO users (email, firebase_uid)
+       VALUES ($1, $2)
+       ON CONFLICT (email) DO UPDATE SET firebase_uid = EXCLUDED.firebase_uid, updated_at = NOW()
+       RETURNING id`,
+      [email.toLowerCase(), firebaseUid]
+    );
+    userId = created[0].id;
+  } else {
+    // No phone or email — create a firebase_uid-only user
+    const { rows: created } = await pool.query(
+      `INSERT INTO users (firebase_uid)
+       VALUES ($1)
+       RETURNING id`,
+      [firebaseUid]
     );
     userId = created[0].id;
   }
@@ -324,4 +438,4 @@ async function issueTokensForUser(userId) {
   return { accessToken, refreshToken };
 }
 
-module.exports = { requestOtp, verifyOtp, refreshAccessToken, deleteSession, deleteAccount, verifyFirebaseToken, findOrCreateByFirebaseUid, issueTokensForUser };
+module.exports = { requestOtp, verifyOtp, registerWithEmail, loginWithEmail, refreshAccessToken, deleteSession, deleteAccount, verifyFirebaseToken, findOrCreateByFirebaseUid, issueTokensForUser };

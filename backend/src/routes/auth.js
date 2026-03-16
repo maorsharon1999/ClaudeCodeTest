@@ -80,6 +80,40 @@ router.delete('/session', async (req, res, next) => {
   }
 });
 
+// POST /auth/register — email + password registration
+router.post('/register', async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    const tokens = await authService.registerWithEmail(email, password);
+    const profile = await profileService.getProfile(tokens.userId);
+    return res.status(200).json({
+      access_token:     tokens.accessToken,
+      refresh_token:    tokens.refreshToken,
+      user_id:          tokens.userId,
+      profile_complete: !!profile,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /auth/login — email + password login
+router.post('/login', async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+    const tokens = await authService.loginWithEmail(email, password);
+    const profile = await profileService.getProfile(tokens.userId);
+    return res.status(200).json({
+      access_token:     tokens.accessToken,
+      refresh_token:    tokens.refreshToken,
+      user_id:          tokens.userId,
+      profile_complete: !!profile,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // POST /auth/firebase/verify
 // Accepts a Firebase ID token, verifies it via Firebase Admin SDK,
 // upserts the user, and returns a backend JWT pair.
@@ -94,7 +128,8 @@ router.post('/firebase/verify', async (req, res, next) => {
     const decoded = await authService.verifyFirebaseToken(id_token);
     const { userId, isNew } = await authService.findOrCreateByFirebaseUid(
       decoded.uid,
-      decoded.phone_number || null
+      decoded.phone_number || null,
+      decoded.email || null
     );
 
     const profile = await profileService.getProfile(userId);

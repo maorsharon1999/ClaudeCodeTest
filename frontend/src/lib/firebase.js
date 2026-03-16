@@ -13,7 +13,7 @@
  */
 
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
 
 const FIREBASE_API_KEY     = process.env.EXPO_PUBLIC_FIREBASE_API_KEY;
 const FIREBASE_AUTH_DOMAIN = process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -47,4 +47,16 @@ export function getFirebaseAuth() {
 
   _auth = getAuth(app);
   return _auth;
+}
+
+/**
+ * Sign in or register a user with email + password via Firebase.
+ * Returns the Firebase UserCredential.
+ */
+export async function signInOrRegisterWithEmail(email, password, isRegistering) {
+  const auth = getFirebaseAuth();
+  if (isRegistering) {
+    return createUserWithEmailAndPassword(auth, email, password);
+  }
+  return signInWithEmailAndPassword(auth, email, password);
 }

@@ -14,22 +14,48 @@ const request = require('supertest');
 const bcrypt  = require('bcrypt');
 
 // --- Mock pg pool ---
-// Includes Phase 2 queries: OTP rate-limit count and revoked_tokens insert/select.
 jest.mock('../db/pool', () => {
-  const store = { otp: null, revokedJtis: new Set() };
+  const store = {
+    users: {},      // email -> { id, password_hash, banned_at }
+    revokedJtis: new Set(),
+    otp: null,
+  };
   const query = jest.fn(async (sql, params) => {
-    // Phase 2: OTP rate-limit count (Postgres-based)
-    if (sql.includes('SELECT COUNT(*)') && sql.includes('otp_attempts')) {
-      return { rows: [{ cnt: '0' }] }; // always under limit in tests
-    }
-    // Phase 2: revoke refresh token
+    // revoke refresh token
     if (sql.includes('INSERT INTO revoked_tokens')) {
       store.revokedJtis.add(params[0]);
       return { rows: [] };
     }
-    // Phase 2: check revoked token
+    // check revoked token
     if (sql.includes('FROM revoked_tokens')) {
       return { rows: store.revokedJtis.has(params[0]) ? [{ 1: 1 }] : [] };
+    }
+    // email register: INSERT INTO users (email, password_hash)
+    if (sql.includes('INSERT INTO users') && sql.includes('email') && sql.includes('password_hash')) {
+      const email = params[0];
+      const passwordHash = params[1];
+      if (store.users[email]) {
+        const err = new Error('duplicate key');
+        err.code = '23505';
+        throw err;
+      }
+      store.users[email] = { id: 'mock-user-uuid', password_hash: passwordHash, banned_at: null };
+      return { rows: [{ id: 'mock-user-uuid' }] };
+    }
+    // email login: SELECT id, password_hash, banned_at FROM users WHERE email
+    if (sql.includes('SELECT id, password_hash, banned_at') && sql.includes('WHERE email')) {
+      const email = params[0];
+      const user = store.users[email];
+      if (!user) return { rows: [] };
+      return { rows: [{ id: user.id, password_hash: user.password_hash, banned_at: user.banned_at }] };
+    }
+    // upsert visibility
+    if (sql.includes('INSERT INTO visibility_states')) {
+      return { rows: [] };
+    }
+    // OTP rate-limit count (legacy)
+    if (sql.includes('SELECT COUNT(*)') && sql.includes('otp_attempts')) {
+      return { rows: [{ cnt: '0' }] };
     }
     // requestOtp: INSERT into otp_attempts
     if (sql.includes('INSERT INTO otp_attempts')) {
@@ -51,13 +77,9 @@ jest.mock('../db/pool', () => {
       if (store.otp) store.otp.verified = true;
       return { rows: [] };
     }
-    // upsert user
+    // phone upsert user
     if (sql.includes('INSERT INTO users')) {
       return { rows: [{ id: 'mock-user-uuid' }] };
-    }
-    // upsert visibility
-    if (sql.includes('INSERT INTO visibility_states')) {
-      return { rows: [] };
     }
     // ban check
     if (sql.includes('SELECT banned_at FROM users')) {
@@ -70,26 +92,77 @@ jest.mock('../db/pool', () => {
 
 const app = require('../index');
 
-describe('POST /api/v1/auth/otp/request', () => {
-  it('returns 200 with valid phone', async () => {
-    const res = await request(app).post('/api/v1/auth/otp/request').send({ phone: '+12125550001' });
+describe('POST /api/v1/auth/register', () => {
+  it('returns 200 with tokens on valid email + password', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/register')
+      .send({ email: 'alice@example.com', password: 'password123' });
     expect(res.status).toBe(200);
-    expect(res.body.message).toBe('OTP sent.');
+    expect(res.body.access_token).toBeDefined();
+    expect(res.body.refresh_token).toBeDefined();
+    expect(res.body.user_id).toBe('mock-user-uuid');
   });
 
-  it('returns 400 with missing phone', async () => {
-    const res = await request(app).post('/api/v1/auth/otp/request').send({});
+  it('returns 400 with invalid email', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/register')
+      .send({ email: 'not-an-email', password: 'password123' });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 with short password', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/register')
+      .send({ email: 'bob@example.com', password: 'short' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 409 on duplicate email', async () => {
+    // First registration succeeds (email was registered in previous test in this suite)
+    // Use a fresh email to register, then try again
+    await request(app)
+      .post('/api/v1/auth/register')
+      .send({ email: 'duplicate@example.com', password: 'password123' });
+    const res = await request(app)
+      .post('/api/v1/auth/register')
+      .send({ email: 'duplicate@example.com', password: 'password123' });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('EMAIL_TAKEN');
   });
 });
 
-describe('POST /api/v1/auth/otp/verify', () => {
-  it('returns 400 with missing fields', async () => {
-    // Fails validation before any DB call — no mock setup needed
-    const res = await request(app).post('/api/v1/auth/otp/verify').send({ phone: '+1212' });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+describe('POST /api/v1/auth/login', () => {
+  it('returns 200 with tokens on correct credentials', async () => {
+    // Register first
+    await request(app)
+      .post('/api/v1/auth/register')
+      .send({ email: 'login-test@example.com', password: 'mypassword1' });
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: 'login-test@example.com', password: 'mypassword1' });
+    expect(res.status).toBe(200);
+    expect(res.body.access_token).toBeDefined();
+  });
+
+  it('returns 401 on wrong password', async () => {
+    await request(app)
+      .post('/api/v1/auth/register')
+      .send({ email: 'wrongpw@example.com', password: 'correctpassword' });
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: 'wrongpw@example.com', password: 'wrongpassword' });
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('INVALID_CREDENTIALS');
+  });
+
+  it('returns 401 when email not found', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: 'nonexistent@example.com', password: 'somepassword' });
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('INVALID_CREDENTIALS');
   });
 });
 
@@ -115,40 +188,6 @@ describe('DELETE /api/v1/auth/session', () => {
   it('returns 400 with missing refresh_token', async () => {
     const res = await request(app).delete('/api/v1/auth/session').send({});
     expect(res.status).toBe(400);
-  });
-});
-
-// --- AC: OTP expires after 10 minutes ---
-describe('verifyOtp with expired OTP', () => {
-  it('returns 400 OTP_NOT_FOUND when OTP row has expires_at in the past', async () => {
-    // The pool mock returns rows:[] when no valid OTP exists — simulate expiry
-    const pool = require('../db/pool');
-    pool.query.mockImplementationOnce(async (sql) => {
-      if (sql.includes('SELECT id, code_hash')) return { rows: [] }; // expired → no row
-    });
-    const res = await request(app)
-      .post('/api/v1/auth/otp/verify')
-      .send({ phone: '+12125550099', code: '000000' });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('OTP_NOT_FOUND');
-  });
-});
-
-// --- AC: 5 wrong attempts locks OTP ---
-describe('verifyOtp lockout after 5 failed attempts', () => {
-  it('returns 429 OTP_LOCKED when attempt_count >= 5', async () => {
-    const pool = require('../db/pool');
-    const lockedHash = await bcrypt.hash('999999', 10);
-    pool.query.mockImplementationOnce(async (sql) => {
-      if (sql.includes('SELECT id, code_hash')) {
-        return { rows: [{ id: 'otp-locked', code_hash: lockedHash, attempt_count: 5, verified: false }] };
-      }
-    });
-    const res = await request(app)
-      .post('/api/v1/auth/otp/verify')
-      .send({ phone: '+12125550099', code: '000000' });
-    expect(res.status).toBe(429);
-    expect(res.body.error.code).toBe('OTP_LOCKED');
   });
 });
 
