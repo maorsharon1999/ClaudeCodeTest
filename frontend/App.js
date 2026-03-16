@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/context/AuthContext';
 import RootNavigator from './src/navigation/RootNavigator';
+import './src/firebase/config';
 
 // Prevent the native splash from auto-hiding before we are ready to
 // show our animated intro. This must be called before the component tree

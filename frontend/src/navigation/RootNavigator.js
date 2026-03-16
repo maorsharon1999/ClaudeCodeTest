@@ -6,8 +6,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../theme';
 
-import PhoneEntryScreen from '../screens/PhoneEntryScreen';
-import OtpVerifyScreen from '../screens/OtpVerifyScreen';
+import EmailEntryScreen from '../screens/EmailEntryScreen';
+import EmailVerifyScreen from '../screens/EmailVerifyScreen';
 import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileEditScreen from '../screens/ProfileEditScreen';
@@ -24,8 +24,8 @@ const AppStack = createNativeStackNavigator();
 function AuthNavigator() {
   return (
     <AuthStack.Navigator screenOptions={{ headerShown: false }}>
-      <AuthStack.Screen name="PhoneEntry" component={PhoneEntryScreen} />
-      <AuthStack.Screen name="OtpVerify" component={OtpVerifyScreen} />
+      <AuthStack.Screen name="EmailEntry" component={EmailEntryScreen} />
+      <AuthStack.Screen name="EmailVerify" component={EmailVerifyScreen} />
     </AuthStack.Navigator>
   );
 }

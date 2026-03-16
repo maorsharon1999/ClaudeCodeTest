@@ -1,5 +1,6 @@
 'use strict';
 require('dotenv').config();
+require('./firebase/config');
 
 // Config must load after dotenv
 const config = require('./config');
