@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getMessages, sendMessage, blockUser, reportUser, uploadVoiceNote } from '../api/chat';
@@ -51,6 +52,11 @@ export default function ThreadScreen({ route, navigation }) {
     opacity: enterAnim,
     transform: [{ translateY: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
   };
+
+  // Send / Mic button press spring
+  const sendBtnScale = useRef(new Animated.Value(1)).current;
+  const onSendPressIn = () => Animated.spring(sendBtnScale, { toValue: 0.94, useNativeDriver: true, speed: 40, bounciness: 0 }).start();
+  const onSendPressOut = () => Animated.spring(sendBtnScale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 6 }).start();
 
   const listRef = useRef(null);
 
@@ -138,7 +144,13 @@ export default function ThreadScreen({ route, navigation }) {
 
     try {
       const real = await sendMessage(threadId, text);
-      setMessages((prev) => prev.map((m) => (m.id === tempId ? real : m)));
+      setMessages((prev) => {
+        // Remove the optimistic placeholder and ensure the confirmed message
+        // is present exactly once (the poll may have already added it).
+        const without = prev.filter((m) => m.id !== tempId);
+        const alreadyPresent = without.some((m) => m.id === real.id);
+        return alreadyPresent ? without : [...without, real];
+      });
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       showToast('Could not send message. Try again.');
@@ -242,14 +254,20 @@ export default function ThreadScreen({ route, navigation }) {
             durationS={item.voice_note_duration_s}
             isOwn={isMine}
           />
+        ) : isMine ? (
+          <LinearGradient
+            colors={['#7B5CFF', '#6C47FF']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.bubble, styles.bubbleMine]}
+          >
+            <Text style={styles.bubbleTextMine}>{item.body}</Text>
+            <Text style={styles.bubbleTimeMine}>{formatTime(item.sent_at)}</Text>
+          </LinearGradient>
         ) : (
-          <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
-            <Text style={isMine ? styles.bubbleTextMine : styles.bubbleTextTheirs}>
-              {item.body}
-            </Text>
-            <Text style={isMine ? styles.bubbleTimeMine : styles.bubbleTimeTheirs}>
-              {formatTime(item.sent_at)}
-            </Text>
+          <View style={[styles.bubble, styles.bubbleTheirs]}>
+            <Text style={styles.bubbleTextTheirs}>{item.body}</Text>
+            <Text style={styles.bubbleTimeTheirs}>{formatTime(item.sent_at)}</Text>
           </View>
         )}
       </View>
@@ -302,24 +320,32 @@ export default function ThreadScreen({ route, navigation }) {
             accessibilityLabel="Message input"
           />
           {showMicButton ? (
-            <TouchableOpacity
-              style={styles.sendBtn}
-              onPress={() => setIsRecording(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Record voice note"
-            >
-              <Text style={styles.sendBtnText}>{'\uD83C\uDFA4'}</Text>
-            </TouchableOpacity>
+            <Animated.View style={{ transform: [{ scale: sendBtnScale }] }}>
+              <TouchableOpacity
+                style={styles.sendBtn}
+                onPress={() => setIsRecording(true)}
+                onPressIn={onSendPressIn}
+                onPressOut={onSendPressOut}
+                accessibilityRole="button"
+                accessibilityLabel="Record voice note"
+              >
+                <Text style={styles.sendBtnText}>{'\uD83C\uDFA4'}</Text>
+              </TouchableOpacity>
+            </Animated.View>
           ) : (
-            <TouchableOpacity
-              style={[styles.sendBtn, !canSend && styles.sendBtnDisabled]}
-              onPress={handleSend}
-              disabled={!canSend}
-              accessibilityRole="button"
-              accessibilityLabel="Send message"
-            >
-              <Text style={styles.sendBtnText}>Send</Text>
-            </TouchableOpacity>
+            <Animated.View style={{ transform: [{ scale: sendBtnScale }] }}>
+              <TouchableOpacity
+                style={[styles.sendBtn, !canSend && styles.sendBtnDisabled]}
+                onPress={handleSend}
+                onPressIn={onSendPressIn}
+                onPressOut={onSendPressOut}
+                disabled={!canSend}
+                accessibilityRole="button"
+                accessibilityLabel="Send message"
+              >
+                <Text style={styles.sendBtnText}>Send</Text>
+              </TouchableOpacity>
+            </Animated.View>
           )}
         </View>
       )}
@@ -343,8 +369,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
   },
-  bubbleMine: { backgroundColor: theme.colors.brand, borderBottomRightRadius: 4 },
-  bubbleTheirs: { backgroundColor: theme.colors.bgDim, borderBottomLeftRadius: 4 },
+  bubbleMine: { borderBottomRightRadius: 4, overflow: 'hidden' },
+  bubbleTheirs: { backgroundColor: '#fff', borderBottomLeftRadius: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 1 },
   bubbleTextMine: { color: '#fff', fontSize: 15, lineHeight: 21 },
   bubbleTextTheirs: { color: theme.colors.textBody, fontSize: 15, lineHeight: 21 },
   bubbleTimeMine: { color: 'rgba(255,255,255,0.65)', fontSize: 11, marginTop: 4, textAlign: 'right' },
@@ -354,15 +380,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.borderSubtle,
     backgroundColor: theme.colors.bgBase,
+    ...theme.shadows.inputBar,
   },
   input: {
     flex: 1,
     minHeight: 40,
     maxHeight: 96,
-    backgroundColor: theme.colors.bgWash,
+    backgroundColor: theme.colors.inputTinted,
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,

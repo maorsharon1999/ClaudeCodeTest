@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Animated,
+  Easing,
   Platform,
 } from 'react-native';
 import { setVisibility, getProfile } from '../api/profile';
@@ -93,6 +94,30 @@ export default function HomeScreen({ navigation }) {
     }
   }, [isVisible]);
 
+  // Nav icon press springs
+  const navSignalScale = useRef(new Animated.Value(1)).current;
+  const navChatsScale = useRef(new Animated.Value(1)).current;
+  const navNearbyScale = useRef(new Animated.Value(1)).current;
+  const makeNavPressIn = (anim) => () => Animated.spring(anim, { toValue: 0.94, useNativeDriver: true, speed: 40, bounciness: 0 }).start();
+  const makeNavPressOut = (anim) => () => Animated.spring(anim, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 6 }).start();
+
+  // Ambient background circle animation
+  const ambientScale = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (isVisible) {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(ambientScale, { toValue: 1.08, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(ambientScale, { toValue: 1.0, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        ])
+      );
+      loop.start();
+      return () => loop.stop();
+    } else {
+      ambientScale.setValue(1);
+    }
+  }, [isVisible]);
+
   useEffect(() => {
     resetVisibilityOnMount();
     getProfile().then(p => {
@@ -135,6 +160,7 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <Animated.View style={[homeStyles.container, enterStyle]}>
+      <Animated.View style={[homeStyles.ambientCircle, { transform: [{ scale: ambientScale }] }]} />
       <TouchableOpacity
         style={homeStyles.settingsBtn}
         onPress={() => navigation.navigate('Settings')}
@@ -200,46 +226,58 @@ export default function HomeScreen({ navigation }) {
       </Text>
 
       <View style={homeStyles.navRow}>
-        <TouchableOpacity
-          style={homeStyles.navItem}
-          onPress={() => navigation.navigate('Signals')}
-          accessibilityRole="button"
-          accessibilityLabel="View signals"
-        >
-          <View style={homeStyles.navIconWrap}>
-            <Text style={homeStyles.navIconGlyph}>⚡</Text>
-            {signalCount > 0 && (
-              <View style={homeStyles.badge}>
-                <Text style={homeStyles.badgeText}>{signalCount}</Text>
-              </View>
-            )}
-          </View>
-          <Text style={homeStyles.navLabel}>Signals</Text>
-        </TouchableOpacity>
+        <Animated.View style={{ transform: [{ scale: navSignalScale }] }}>
+          <TouchableOpacity
+            style={homeStyles.navItem}
+            onPress={() => navigation.navigate('Signals')}
+            onPressIn={makeNavPressIn(navSignalScale)}
+            onPressOut={makeNavPressOut(navSignalScale)}
+            accessibilityRole="button"
+            accessibilityLabel="View signals"
+          >
+            <View style={homeStyles.navIconWrap}>
+              <Text style={homeStyles.navIconGlyph}>⚡</Text>
+              {signalCount > 0 && (
+                <View style={homeStyles.badge}>
+                  <Text style={homeStyles.badgeText}>{signalCount}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={homeStyles.navLabel}>Signals</Text>
+          </TouchableOpacity>
+        </Animated.View>
 
-        <TouchableOpacity
-          style={homeStyles.navItem}
-          onPress={() => navigation.navigate('Chats')}
-          accessibilityRole="button"
-          accessibilityLabel="View chats"
-        >
-          <View style={homeStyles.navIconWrap}>
-            <Text style={homeStyles.navIconGlyph}>✉</Text>
-          </View>
-          <Text style={homeStyles.navLabel}>Chats</Text>
-        </TouchableOpacity>
+        <Animated.View style={{ transform: [{ scale: navChatsScale }] }}>
+          <TouchableOpacity
+            style={homeStyles.navItem}
+            onPress={() => navigation.navigate('Chats')}
+            onPressIn={makeNavPressIn(navChatsScale)}
+            onPressOut={makeNavPressOut(navChatsScale)}
+            accessibilityRole="button"
+            accessibilityLabel="View chats"
+          >
+            <View style={homeStyles.navIconWrap}>
+              <Text style={homeStyles.navIconGlyph}>✉</Text>
+            </View>
+            <Text style={homeStyles.navLabel}>Chats</Text>
+          </TouchableOpacity>
+        </Animated.View>
 
-        <TouchableOpacity
-          style={homeStyles.navItem}
-          onPress={() => navigation.navigate('Discovery')}
-          accessibilityRole="button"
-          accessibilityLabel="Find people nearby"
-        >
-          <View style={homeStyles.navIconWrap}>
-            <Text style={homeStyles.navIconGlyph}>◎</Text>
-          </View>
-          <Text style={homeStyles.navLabel}>Nearby</Text>
-        </TouchableOpacity>
+        <Animated.View style={{ transform: [{ scale: navNearbyScale }] }}>
+          <TouchableOpacity
+            style={homeStyles.navItem}
+            onPress={() => navigation.navigate('Discovery')}
+            onPressIn={makeNavPressIn(navNearbyScale)}
+            onPressOut={makeNavPressOut(navNearbyScale)}
+            accessibilityRole="button"
+            accessibilityLabel="Find people nearby"
+          >
+            <View style={homeStyles.navIconWrap}>
+              <Text style={homeStyles.navIconGlyph}>◎</Text>
+            </View>
+            <Text style={homeStyles.navLabel}>Nearby</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
 
       <TouchableOpacity
@@ -259,10 +297,20 @@ export default function HomeScreen({ navigation }) {
 const homeStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.bgBase,
+    backgroundColor: theme.colors.bgTinted,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
+  },
+  ambientCircle: {
+    position: 'absolute',
+    width: 480,
+    height: 480,
+    borderRadius: 240,
+    backgroundColor: theme.colors.orbGlow,
+    alignSelf: 'center',
+    top: '50%',
+    marginTop: -240,
   },
   settingsBtn: {
     position: 'absolute',
@@ -323,7 +371,14 @@ const homeStyles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: theme.colors.bgWash,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderWidth: 1,
+    borderColor: 'rgba(108,71,255,0.12)',
+    shadowColor: '#6C47FF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
     justifyContent: 'center',
     alignItems: 'center',
   },

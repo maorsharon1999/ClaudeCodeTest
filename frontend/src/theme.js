@@ -14,6 +14,8 @@ export const theme = {
     bgSubtle: '#fafafa',
     bgWash: '#f5f5f5',
     bgDim: '#f0f0f0',
+    bgTinted: '#F7F5FF',
+    inputTinted: '#F0EDFF',
     borderDefault: '#ddd',
     borderSubtle: '#ebebeb',
     badgePurpleBg: '#EDE9FF',
@@ -25,6 +27,14 @@ export const theme = {
   shadows: {
     card: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 6, elevation: 3 },
     orb: { shadowColor: '#6C47FF', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 12 },
+    buttonPress: { shadowColor: '#6C47FF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+    inputBar: { shadowColor: '#000', shadowOffset: { width: 0, height: -1 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 4 },
+  },
+  gradients: {
+    brand: ['#7B5CFF', '#6C47FF', '#5835FF'],
+    accent: ['#FF8C6C', '#FF6C47'],
+    success: ['#5DC060', '#4CAF50'],
+    purpleToCoralH: ['#6C47FF', '#FF6C47'],
   },
   typography: {
     displayLg: { fontSize: 40, fontWeight: '800', letterSpacing: -0.5 },

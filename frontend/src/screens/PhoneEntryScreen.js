@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { requestOtp } from '../api/auth';
 import { theme } from '../theme';
 
@@ -29,6 +30,11 @@ export default function PhoneEntryScreen({ navigation }) {
     opacity: enterAnim,
     transform: [{ translateY: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
   };
+
+  // Send Code button press spring
+  const sendScale = useRef(new Animated.Value(1)).current;
+  const onSendPressIn = () => Animated.spring(sendScale, { toValue: 0.94, useNativeDriver: true, speed: 40, bounciness: 0 }).start();
+  const onSendPressOut = () => Animated.spring(sendScale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 6 }).start();
 
   function validate(value) {
     if (!E164_REGEX.test(value)) {
@@ -72,7 +78,14 @@ export default function PhoneEntryScreen({ navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <Animated.View style={[styles.container, enterStyle]}>
+        <View style={styles.decorCircle} />
         <Text style={styles.title}>Bubble</Text>
+        <LinearGradient
+          colors={['#6C47FF', '#FF6C47']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.accentBar}
+        />
         <Text style={styles.subtitle}>Enter your phone number to get started</Text>
 
         <TextInput
@@ -99,19 +112,31 @@ export default function PhoneEntryScreen({ navigation }) {
           <Text style={styles.errorText}>{errorMsg}</Text>
         )}
 
-        <TouchableOpacity
-          style={[styles.button, isSubmitting && styles.buttonDisabled]}
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          accessibilityRole="button"
-          accessibilityLabel="Send verification code"
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Send Code</Text>
-          )}
-        </TouchableOpacity>
+        <Animated.View style={{ transform: [{ scale: sendScale }] }}>
+          <TouchableOpacity
+            style={[styles.button, isSubmitting && styles.buttonDisabled]}
+            onPress={handleSubmit}
+            onPressIn={onSendPressIn}
+            onPressOut={onSendPressOut}
+            disabled={isSubmitting}
+            accessibilityRole="button"
+            accessibilityLabel="Send verification code"
+          >
+            {!isSubmitting && (
+              <LinearGradient
+                colors={theme.gradients.brand}
+                style={StyleSheet.absoluteFill}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              />
+            )}
+            {isSubmitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Send Code</Text>
+            )}
+          </TouchableOpacity>
+        </Animated.View>
 
         <Text style={styles.hint}>
           We'll send a 6-digit code via SMS. Standard rates may apply.
@@ -122,14 +147,23 @@ export default function PhoneEntryScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: theme.colors.bgBase },
+  flex: { flex: 1, backgroundColor: theme.colors.bgTinted },
   container: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 28,
   },
+  decorCircle: {
+    position: 'absolute',
+    top: -80,
+    right: -60,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(108,71,255,0.07)',
+  },
   title: {
-    ...theme.typography.displayMd,
+    ...theme.typography.displayLg,
     color: theme.colors.brand,
     textAlign: 'center',
     marginBottom: 8,
@@ -144,7 +178,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderWidth: 1.5,
     borderColor: theme.colors.borderDefault,
-    borderRadius: theme.radii.md,
+    borderRadius: 20,
     paddingHorizontal: 16,
     fontSize: 18,
     color: theme.colors.textPrimary,
@@ -165,9 +199,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
+    overflow: 'hidden',
   },
   buttonDisabled: {
     opacity: 0.6,
+  },
+  accentBar: {
+    height: 3,
+    width: 48,
+    borderRadius: 2,
+    marginBottom: 20,
+    alignSelf: 'center',
   },
   buttonText: {
     color: '#fff',

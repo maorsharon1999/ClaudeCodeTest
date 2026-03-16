@@ -83,9 +83,10 @@ export function AuthProvider({ children }) {
         setProfileComplete(stored === '1');
         setAuthState(true);
       } catch (err) {
-        // Only force logout when the server explicitly rejected the token (401).
+        // Force logout when the server explicitly rejected the token (401) OR when
+        // there is no refresh token stored (brand-new / fully signed-out user).
         // Network errors (backend unreachable, timeout) must not log the user out.
-        const isAuthRejection = err.response?.status === 401;
+        const isAuthRejection = err.response?.status === 401 || err.message === 'No refresh token';
         if (isAuthRejection) {
           await storage.deleteItem(REFRESH_TOKEN_KEY).catch(() => {});
           await storage.deleteItem(PROFILE_COMPLETE_KEY).catch(() => {});

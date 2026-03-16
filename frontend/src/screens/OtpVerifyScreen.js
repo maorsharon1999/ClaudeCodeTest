@@ -133,6 +133,7 @@ export default function OtpVerifyScreen({ route, navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <Animated.View style={[styles.container, enterStyle]}>
+        <View style={styles.decorCircle} />
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
@@ -196,11 +197,20 @@ export default function OtpVerifyScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: theme.colors.bgBase },
+  flex: { flex: 1, backgroundColor: theme.colors.bgTinted },
   container: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 28,
+  },
+  decorCircle: {
+    position: 'absolute',
+    top: -80,
+    right: -60,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(108,71,255,0.07)',
   },
   backBtn: {
     position: 'absolute',
@@ -212,8 +222,9 @@ const styles = StyleSheet.create({
     color: theme.colors.brand,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 40,
+    fontWeight: '800',
+    letterSpacing: -0.5,
     color: theme.colors.textPrimary,
     marginBottom: 10,
   },
@@ -231,7 +242,7 @@ const styles = StyleSheet.create({
     height: 64,
     borderWidth: 1.5,
     borderColor: theme.colors.borderDefault,
-    borderRadius: theme.radii.md,
+    borderRadius: 20,
     fontSize: 32,
     color: theme.colors.textPrimary,
     letterSpacing: 12,

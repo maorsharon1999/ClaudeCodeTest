@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { getIncomingSignals, getOutgoingSignals, respondSignal } from '../api/signals';
 import Toast from '../components/Toast';
@@ -98,6 +99,49 @@ export default function SignalsScreen({ navigation }) {
     );
   }
 
+  function IncomingCardActions({ item }) {
+    const approveScale = useRef(new Animated.Value(1)).current;
+    const declineScale = useRef(new Animated.Value(1)).current;
+    const onApprovePressIn = () => Animated.spring(approveScale, { toValue: 0.94, useNativeDriver: true, speed: 40, bounciness: 0 }).start();
+    const onApprovePressOut = () => Animated.spring(approveScale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 6 }).start();
+    const onDeclinePressIn = () => Animated.spring(declineScale, { toValue: 0.94, useNativeDriver: true, speed: 40, bounciness: 0 }).start();
+    const onDeclinePressOut = () => Animated.spring(declineScale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 6 }).start();
+    return (
+      <View style={styles.actionRow}>
+        <Animated.View style={{ transform: [{ scale: approveScale }] }}>
+          <TouchableOpacity
+            style={styles.approveBtn}
+            onPress={() => handleApprove(item)}
+            onPressIn={onApprovePressIn}
+            onPressOut={onApprovePressOut}
+            accessibilityRole="button"
+            accessibilityLabel="Approve signal"
+          >
+            <LinearGradient
+              colors={theme.gradients.success}
+              style={StyleSheet.absoluteFill}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            />
+            <Text style={styles.approveBtnText}>{'Approve \u2713'}</Text>
+          </TouchableOpacity>
+        </Animated.View>
+        <Animated.View style={{ transform: [{ scale: declineScale }] }}>
+          <TouchableOpacity
+            style={styles.declineBtn}
+            onPress={() => handleDecline(item)}
+            onPressIn={onDeclinePressIn}
+            onPressOut={onDeclinePressOut}
+            accessibilityRole="button"
+            accessibilityLabel="Decline signal"
+          >
+            <Text style={styles.declineBtnText}>{'Decline \u2717'}</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    );
+  }
+
   function renderIncomingCard({ item }) {
     const user = item.sender || {};
     return (
@@ -113,24 +157,7 @@ export default function SignalsScreen({ navigation }) {
             {user.bio}
           </Text>
         ) : null}
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={styles.approveBtn}
-            onPress={() => handleApprove(item)}
-            accessibilityRole="button"
-            accessibilityLabel="Approve signal"
-          >
-            <Text style={styles.approveBtnText}>{'Approve \u2713'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.declineBtn}
-            onPress={() => handleDecline(item)}
-            accessibilityRole="button"
-            accessibilityLabel="Decline signal"
-          >
-            <Text style={styles.declineBtnText}>{'Decline \u2717'}</Text>
-          </TouchableOpacity>
-        </View>
+        <IncomingCardActions item={item} />
       </View>
     );
   }
@@ -251,21 +278,20 @@ const styles = StyleSheet.create({
   spinner: { marginVertical: 16 },
   card: {
     backgroundColor: theme.colors.bgBase,
-    borderRadius: theme.radii.md,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.borderSubtle,
+    ...theme.shadows.card,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardName: { fontSize: 17, fontWeight: '700', color: theme.colors.textBody },
   cardBio: { fontSize: 14, color: '#666', marginTop: 8, lineHeight: 20 },
   actionRow: { flexDirection: 'row', marginTop: 12, gap: 10 },
   approveBtn: {
-    backgroundColor: theme.colors.success,
     borderRadius: theme.radii.md,
     paddingVertical: 10,
     paddingHorizontal: 16,
+    overflow: 'hidden',
   },
   approveBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   declineBtn: {

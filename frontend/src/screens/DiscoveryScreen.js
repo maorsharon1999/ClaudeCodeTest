@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { updateLocation, getNearbyUsers } from '../api/discovery';
 import { sendSignal, getOutgoingSignals } from '../api/signals';
@@ -43,6 +44,11 @@ export default function DiscoveryScreen() {
     opacity: enterAnim,
     transform: [{ translateY: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
   };
+
+  // Signal button press spring
+  const signalScale = useRef(new Animated.Value(1)).current;
+  const onSignalPressIn = () => Animated.spring(signalScale, { toValue: 0.94, useNativeDriver: true, speed: 40, bounciness: 0 }).start();
+  const onSignalPressOut = () => Animated.spring(signalScale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 6 }).start();
 
   function showToast(msg) {
     setToastMsg(msg);
@@ -242,17 +248,29 @@ export default function DiscoveryScreen() {
                   {item.bio}
                 </Text>
               ) : null}
-              <TouchableOpacity
-                style={[styles.signalBtn, signalledIds.has(item.user_id) && styles.signalBtnSent]}
-                onPress={() => handleSignal(item.user_id)}
-                disabled={signalledIds.has(item.user_id)}
-                accessibilityRole="button"
-                accessibilityLabel={signalledIds.has(item.user_id) ? 'Signal sent' : 'Send signal'}
-              >
-                <Text style={styles.signalBtnText}>
-                  {signalledIds.has(item.user_id) ? 'Sent \u2713' : 'Signal'}
-                </Text>
-              </TouchableOpacity>
+              <Animated.View style={{ transform: [{ scale: signalScale }], alignSelf: 'flex-start' }}>
+                <TouchableOpacity
+                  style={[styles.signalBtn, signalledIds.has(item.user_id) && styles.signalBtnSent]}
+                  onPress={() => handleSignal(item.user_id)}
+                  onPressIn={onSignalPressIn}
+                  onPressOut={onSignalPressOut}
+                  disabled={signalledIds.has(item.user_id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={signalledIds.has(item.user_id) ? 'Signal sent' : 'Send signal'}
+                >
+                  {!signalledIds.has(item.user_id) && (
+                    <LinearGradient
+                      colors={theme.gradients.brand}
+                      style={StyleSheet.absoluteFill}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    />
+                  )}
+                  <Text style={styles.signalBtnText}>
+                    {signalledIds.has(item.user_id) ? 'Sent \u2713' : 'Signal'}
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
             </View>
           )}
         />
@@ -305,17 +323,16 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 16, color: theme.colors.textFaint, textAlign: 'center' },
   card: {
     backgroundColor: theme.colors.bgSubtle,
-    borderRadius: theme.radii.md,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.borderSubtle,
+    ...theme.shadows.card,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardThumb: {
     width: 52,
     height: 52,
-    borderRadius: theme.radii.sm,
+    borderRadius: 26,
     marginRight: theme.spacing.md,
   },
   cardThumbFallback: {
@@ -353,10 +370,10 @@ const styles = StyleSheet.create({
   signalBtn: {
     marginTop: 10,
     alignSelf: 'flex-start',
-    backgroundColor: theme.colors.brand,
     borderRadius: theme.radii.pill,
     paddingVertical: 8,
     paddingHorizontal: 20,
+    overflow: 'hidden',
   },
   signalBtnSent: {
     backgroundColor: theme.colors.disabled,

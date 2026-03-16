@@ -40,7 +40,11 @@ export default function BlockedUsersScreen() {
     }
   }, []);
 
-  useFocusEffect(load);
+  useFocusEffect(
+    React.useCallback(() => {
+      load();
+    }, [load])
+  );
 
   function handleUnblock(item) {
     Alert.alert(
