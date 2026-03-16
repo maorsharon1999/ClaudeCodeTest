@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { requestOtp } from '../api/auth';
+import { isFirebaseEnabled, getFirebaseAuth } from '../lib/firebase';
 import { theme } from '../theme';
 
 const E164_REGEX = /^\+[1-9]\d{7,14}$/;
@@ -54,19 +55,55 @@ export default function PhoneEntryScreen({ navigation }) {
     setStatus('submitting');
     setErrorMsg('');
 
-    try {
-      await requestOtp(phone.trim());
-      navigation.navigate('OtpVerify', { phone: phone.trim() });
-    } catch (err) {
-      const code = err.response?.data?.error?.code;
-      if (code === 'OTP_RATE_LIMIT' || code === 'RATE_LIMIT') {
-        setErrorMsg('Too many requests. Please wait and try again.');
-      } else if (code === 'VALIDATION_ERROR') {
-        setErrorMsg('Invalid phone number format.');
-      } else {
-        setErrorMsg('Something went wrong. Please try again.');
+    if (isFirebaseEnabled()) {
+      // Firebase Phone Auth path — real SMS via Firebase
+      try {
+        const { signInWithPhoneNumber, RecaptchaVerifier } = await import('firebase/auth');
+        const auth = getFirebaseAuth();
+
+        // reCAPTCHA verifier (web only — invisible by default)
+        if (!window._recaptchaVerifier) {
+          window._recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            size: 'invisible',
+          });
+        }
+
+        const confirmationResult = await signInWithPhoneNumber(
+          auth,
+          phone.trim(),
+          window._recaptchaVerifier
+        );
+        navigation.navigate('OtpVerify', {
+          phone: phone.trim(),
+          firebaseConfirmationResult: confirmationResult,
+        });
+      } catch (err) {
+        console.error('[Firebase] signInWithPhoneNumber error:', err);
+        if (err.code === 'auth/too-many-requests') {
+          setErrorMsg('Too many requests. Please wait and try again.');
+        } else if (err.code === 'auth/invalid-phone-number') {
+          setErrorMsg('Invalid phone number format.');
+        } else {
+          setErrorMsg('Something went wrong. Please try again.');
+        }
+        setStatus('error');
       }
-      setStatus('error');
+    } else {
+      // Legacy console-stub OTP path (dev only, no real SMS)
+      try {
+        await requestOtp(phone.trim());
+        navigation.navigate('OtpVerify', { phone: phone.trim() });
+      } catch (err) {
+        const code = err.response?.data?.error?.code;
+        if (code === 'OTP_RATE_LIMIT' || code === 'RATE_LIMIT') {
+          setErrorMsg('Too many requests. Please wait and try again.');
+        } else if (code === 'VALIDATION_ERROR') {
+          setErrorMsg('Invalid phone number format.');
+        } else {
+          setErrorMsg('Something went wrong. Please try again.');
+        }
+        setStatus('error');
+      }
     }
   }
 
@@ -141,6 +178,11 @@ export default function PhoneEntryScreen({ navigation }) {
         <Text style={styles.hint}>
           We'll send a 6-digit code via SMS. Standard rates may apply.
         </Text>
+
+        {/* Invisible reCAPTCHA mount point — Firebase web auth only, no visible UI */}
+        {Platform.OS === 'web' && isFirebaseEnabled() && (
+          <div id="recaptcha-container" />
+        )}
       </Animated.View>
     </KeyboardAvoidingView>
   );

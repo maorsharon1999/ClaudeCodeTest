@@ -10,7 +10,8 @@ import {
   ActivityIndicator,
   Animated,
 } from 'react-native';
-import { verifyOtp, requestOtp } from '../api/auth';
+import { verifyOtp, requestOtp, verifyFirebaseIdToken } from '../api/auth';
+import { isFirebaseEnabled, getFirebaseAuth } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../theme';
 
@@ -18,7 +19,7 @@ const RESEND_SECONDS = 60;
 const CODE_LENGTH = 6;
 
 export default function OtpVerifyScreen({ route, navigation }) {
-  const { phone } = route.params;
+  const { phone, firebaseConfirmationResult } = route.params;
   const { signIn } = useAuth();
 
   const [code, setCode] = useState('');
@@ -66,28 +67,57 @@ export default function OtpVerifyScreen({ route, navigation }) {
     setStatus('verifying');
     setErrorMsg('');
 
-    try {
-      const data = await verifyOtp(phone, codeValue);
-      await signIn(data);
-      // Navigation handled by RootNavigator based on auth state
-    } catch (err) {
-      const code_err = err.response?.data?.error?.code;
-      if (code_err === 'OTP_LOCKED') {
-        setStatus('locked');
-        setErrorMsg('Too many incorrect attempts. Please request a new code.');
-      } else if (code_err === 'OTP_NOT_FOUND') {
-        setStatus('error');
-        setErrorMsg('Code expired. Please request a new one.');
-      } else if (code_err === 'OTP_INVALID') {
-        setStatus('error');
-        setErrorMsg('Incorrect code. Please try again.');
-      } else {
-        setStatus('error');
-        setErrorMsg('Verification failed. Please try again.');
+    if (firebaseConfirmationResult) {
+      // Firebase Phone Auth path
+      try {
+        const userCredential = await firebaseConfirmationResult.confirm(codeValue);
+        const idToken = await userCredential.user.getIdToken();
+        const data = await verifyFirebaseIdToken(idToken);
+        await signIn(data);
+        // Navigation handled by RootNavigator based on auth state
+      } catch (err) {
+        console.error('[Firebase] confirm error:', err);
+        if (err.code === 'auth/invalid-verification-code') {
+          setStatus('error');
+          setErrorMsg('Incorrect code. Please try again.');
+        } else if (err.code === 'auth/code-expired') {
+          setStatus('error');
+          setErrorMsg('Code expired. Please request a new one.');
+        } else if (err.response?.data?.error?.code) {
+          // Backend JWT error
+          setStatus('error');
+          setErrorMsg('Verification failed. Please try again.');
+        } else {
+          setStatus('error');
+          setErrorMsg('Verification failed. Please try again.');
+        }
+        setCode('');
       }
-      setCode('');
+    } else {
+      // Legacy console-stub OTP path
+      try {
+        const data = await verifyOtp(phone, codeValue);
+        await signIn(data);
+        // Navigation handled by RootNavigator based on auth state
+      } catch (err) {
+        const code_err = err.response?.data?.error?.code;
+        if (code_err === 'OTP_LOCKED') {
+          setStatus('locked');
+          setErrorMsg('Too many incorrect attempts. Please request a new code.');
+        } else if (code_err === 'OTP_NOT_FOUND') {
+          setStatus('error');
+          setErrorMsg('Code expired. Please request a new one.');
+        } else if (code_err === 'OTP_INVALID') {
+          setStatus('error');
+          setErrorMsg('Incorrect code. Please try again.');
+        } else {
+          setStatus('error');
+          setErrorMsg('Verification failed. Please try again.');
+        }
+        setCode('');
+      }
     }
-  }, [phone, signIn]);
+  }, [phone, firebaseConfirmationResult, signIn]);
 
   function handleCodeChange(text) {
     const cleaned = text.replace(/\D/g, '').slice(0, CODE_LENGTH);
@@ -109,8 +139,14 @@ export default function OtpVerifyScreen({ route, navigation }) {
     setStatus('idle');
     setErrorMsg('');
     try {
-      await requestOtp(phone);
-      startCountdown();
+      if (isFirebaseEnabled()) {
+        // Re-trigger Firebase phone auth — navigate back to PhoneEntry so
+        // a fresh confirmationResult is obtained (Firebase doesn't expose resend directly).
+        navigation.goBack();
+      } else {
+        await requestOtp(phone);
+        startCountdown();
+      }
     } catch (err) {
       const code_err = err.response?.data?.error?.code;
       if (code_err === 'OTP_RATE_LIMIT' || code_err === 'RATE_LIMIT') {

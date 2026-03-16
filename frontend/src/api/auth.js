@@ -27,3 +27,13 @@ export async function deleteSession(refresh_token) {
 export async function deleteAccount() {
   await client.delete('/auth/account');
 }
+
+/**
+ * Phase 1 — Firebase Phone Auth.
+ * Send the Firebase ID token to the backend, which verifies it and
+ * returns a backend JWT pair (same shape as verifyOtp response).
+ */
+export async function verifyFirebaseIdToken(idToken) {
+  const response = await client.post('/auth/firebase/verify', { id_token: idToken });
+  return response.data; // { access_token, refresh_token, user_id, profile_complete, is_new_user }
+}
