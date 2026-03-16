@@ -236,4 +236,94 @@ async function deleteAccount(userId) {
   }
 }
 
-module.exports = { requestOtp, verifyOtp, refreshAccessToken, deleteSession, deleteAccount };
+// --- Firebase Auth integration (Phase 1) ---
+
+/**
+ * Verify a Firebase ID token and return the decoded payload.
+ * Throws with status 401 if the token is invalid or expired.
+ */
+async function verifyFirebaseToken(idToken) {
+  const { getFirebaseAdmin } = require('../db/firebase');
+  const admin = getFirebaseAdmin();
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    return decoded; // { uid, phone_number, ... }
+  } catch (err) {
+    const e = new Error('Firebase ID token is invalid or expired.');
+    e.status = 401;
+    e.code   = 'FIREBASE_TOKEN_INVALID';
+    throw e;
+  }
+}
+
+/**
+ * Find an existing user by firebase_uid, or create a new one.
+ * Also upserts visibility_states for new users.
+ * Returns { userId, isNew }.
+ */
+async function findOrCreateByFirebaseUid(firebaseUid, phoneNumber) {
+  // Try to find existing user
+  const { rows: existing } = await pool.query(
+    'SELECT id FROM users WHERE firebase_uid = $1',
+    [firebaseUid]
+  );
+  if (existing.length > 0) {
+    return { userId: existing[0].id, isNew: false };
+  }
+
+  // New user — insert with firebase_uid; phone_hash derived from phone if available
+  const phoneHash = phoneNumber ? hashPhone(phoneNumber) : null;
+
+  let userId;
+  if (phoneHash) {
+    // Phone-hash user may already exist from legacy OTP flow — link them
+    const { rows: linked } = await pool.query(
+      `UPDATE users SET firebase_uid = $1, updated_at = NOW()
+       WHERE phone_hash = $2 AND firebase_uid IS NULL
+       RETURNING id`,
+      [firebaseUid, phoneHash]
+    );
+    if (linked.length > 0) {
+      return { userId: linked[0].id, isNew: false };
+    }
+    // Insert brand-new user with both identifiers
+    const { rows: created } = await pool.query(
+      `INSERT INTO users (phone_hash, firebase_uid)
+       VALUES ($1, $2)
+       ON CONFLICT (phone_hash) DO UPDATE SET firebase_uid = EXCLUDED.firebase_uid, updated_at = NOW()
+       RETURNING id`,
+      [phoneHash, firebaseUid]
+    );
+    userId = created[0].id;
+  } else {
+    // No phone number (shouldn't happen with Phone Auth, but handle gracefully)
+    const { rows: created } = await pool.query(
+      `INSERT INTO users (phone_hash, firebase_uid)
+       VALUES ($1, $2)
+       RETURNING id`,
+      [`fb:${firebaseUid}`, firebaseUid]
+    );
+    userId = created[0].id;
+  }
+
+  // Ensure visibility state exists
+  await pool.query(
+    `INSERT INTO visibility_states (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
+    [userId]
+  );
+
+  return { userId, isNew: true };
+}
+
+/**
+ * Issue an access + refresh token pair for an existing user ID.
+ * Used by the Firebase verify route so it can reuse the same JWT issuance
+ * without duplicating token-signing logic.
+ */
+async function issueTokensForUser(userId) {
+  const accessToken = issueAccessToken(userId);
+  const { token: refreshToken } = issueRefreshToken(userId);
+  return { accessToken, refreshToken };
+}
+
+module.exports = { requestOtp, verifyOtp, refreshAccessToken, deleteSession, deleteAccount, verifyFirebaseToken, findOrCreateByFirebaseUid, issueTokensForUser };

@@ -20,4 +20,7 @@ module.exports = {
   adminSecret: required('ADMIN_SECRET'),
   publicUrl: process.env.PUBLIC_URL || 'http://localhost:3000',
   storageBaseUrl: required('STORAGE_BASE_URL'),
+  // Firebase — optional until Phase 1 is fully wired; no hard require so existing boot still works
+  firebaseProjectId: process.env.FIREBASE_PROJECT_ID || null,
+  firebaseServiceAccount: process.env.FIREBASE_SERVICE_ACCOUNT || null,
 };
