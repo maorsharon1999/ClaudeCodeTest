@@ -10,7 +10,9 @@ module.exports = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   databaseUrl: required('DATABASE_URL'),
-  redisUrl: required('REDIS_URL'),
+  // Redis is no longer required — token revocation and OTP rate limiting now use Postgres.
+  // REDIS_URL is kept here for backwards compatibility but is unused by default.
+  redisUrl: process.env.REDIS_URL || null,
   jwtAccessSecret: required('JWT_ACCESS_SECRET'),
   jwtRefreshSecret: required('JWT_REFRESH_SECRET'),
   phoneHmacSecret: required('PHONE_HMAC_SECRET'),

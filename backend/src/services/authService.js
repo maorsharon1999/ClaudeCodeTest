@@ -4,7 +4,6 @@ const bcrypt = require('bcrypt');
 const jwt    = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const pool   = require('../db/pool');
-const { getRedis } = require('../db/redis');
 const config = require('../config');
 
 const BCRYPT_ROUNDS = 10;
@@ -40,32 +39,37 @@ function issueRefreshToken(userId) {
   return { token, jti };
 }
 
-// --- Rate limiter helpers (Redis) ---
-// Key: otp_rate:{phoneHash}  Value: count  TTL: 600s (10 min)
+// --- Rate limiter helpers (Postgres) ---
+// Count OTP requests for this phone in the past 10 minutes directly from otp_attempts.
 
 async function checkOtpRateLimit(phoneHash) {
-  const redis = await getRedis();
-  const key   = `otp_rate:${phoneHash}`;
-  const count = await redis.incr(key);
-  if (count === 1) {
-    await redis.expire(key, 10 * 60);
-  }
-  return count; // caller rejects if > 3
+  const { rows } = await pool.query(
+    `SELECT COUNT(*) AS cnt FROM otp_attempts
+     WHERE phone_hash = $1 AND created_at > NOW() - INTERVAL '10 minutes'`,
+    [phoneHash]
+  );
+  return parseInt(rows[0].cnt, 10) + 1; // +1 because the new row hasn't been inserted yet
 }
 
-// --- Revoked token set (Redis) ---
-// Key: revoked_refresh:{jti}  TTL: matches token expiry
+// --- Revoked token set (Postgres) ---
+// Stores revoked refresh token JTIs in the revoked_tokens table.
+// Expired rows are inert (WHERE expires_at > NOW()); a cleanup job can prune them periodically.
 
-async function revokeRefreshToken(jti) {
-  const redis = await getRedis();
-  const key   = `revoked_refresh:${jti}`;
-  await redis.set(key, '1', { EX: config.jwtRefreshExpirySeconds });
+async function revokeRefreshToken(jti, userId, expiresAt) {
+  await pool.query(
+    `INSERT INTO revoked_tokens (jti, user_id, expires_at)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (jti) DO NOTHING`,
+    [jti, userId || null, expiresAt]
+  );
 }
 
 async function isRefreshTokenRevoked(jti) {
-  const redis = await getRedis();
-  const val   = await redis.get(`revoked_refresh:${jti}`);
-  return val !== null;
+  const { rows } = await pool.query(
+    `SELECT 1 FROM revoked_tokens WHERE jti = $1 AND expires_at > NOW()`,
+    [jti]
+  );
+  return rows.length > 0;
 }
 
 // --- Public service functions ---
@@ -121,11 +125,8 @@ async function verifyOtp(phone, code) {
 
   const row = rows[0];
 
-  // Check per-phone Redis lockout (set after MAX_OTP_ATTEMPTS failures)
-  const redis = await getRedis();
-  const lockKey = `otp_phone_lock:${phoneHash}`;
-  const locked = await redis.get(lockKey);
-  if (locked || row.attempt_count >= MAX_OTP_ATTEMPTS) {
+  // Lockout is derived purely from attempt_count in Postgres (no Redis needed)
+  if (row.attempt_count >= MAX_OTP_ATTEMPTS) {
     const err = new Error('OTP locked after too many failed attempts. Request a new code.');
     err.status = 429;
     err.code   = 'OTP_LOCKED';
@@ -135,14 +136,10 @@ async function verifyOtp(phone, code) {
   const match = await bcrypt.compare(code, row.code_hash);
 
   if (!match) {
-    const { rows: updated } = await pool.query(
-      `UPDATE otp_attempts SET attempt_count = attempt_count + 1 WHERE id = $1 RETURNING attempt_count`,
+    await pool.query(
+      `UPDATE otp_attempts SET attempt_count = attempt_count + 1 WHERE id = $1`,
       [row.id]
     );
-    // Set Redis lockout if this was the 5th failure
-    if (updated[0].attempt_count >= MAX_OTP_ATTEMPTS) {
-      await redis.set(lockKey, '1', { EX: 10 * 60 });
-    }
     const err = new Error('Invalid OTP code.');
     err.status = 400;
     err.code   = 'OTP_INVALID';
@@ -209,7 +206,8 @@ async function deleteSession(incomingRefreshToken) {
     // Token already invalid — treat as success (idempotent logout)
     return;
   }
-  await revokeRefreshToken(payload.jti);
+  const expiresAt = new Date(payload.exp * 1000);
+  await revokeRefreshToken(payload.jti, payload.sub, expiresAt);
 }
 
 async function deleteAccount(userId) {

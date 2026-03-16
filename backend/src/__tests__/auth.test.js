@@ -14,27 +14,41 @@ const request = require('supertest');
 const bcrypt  = require('bcrypt');
 
 // --- Mock pg pool ---
+// Includes Phase 2 queries: OTP rate-limit count and revoked_tokens insert/select.
 jest.mock('../db/pool', () => {
-  const rows = {};
+  const store = { otp: null, revokedJtis: new Set() };
   const query = jest.fn(async (sql, params) => {
+    // Phase 2: OTP rate-limit count (Postgres-based)
+    if (sql.includes('SELECT COUNT(*)') && sql.includes('otp_attempts')) {
+      return { rows: [{ cnt: '0' }] }; // always under limit in tests
+    }
+    // Phase 2: revoke refresh token
+    if (sql.includes('INSERT INTO revoked_tokens')) {
+      store.revokedJtis.add(params[0]);
+      return { rows: [] };
+    }
+    // Phase 2: check revoked token
+    if (sql.includes('FROM revoked_tokens')) {
+      return { rows: store.revokedJtis.has(params[0]) ? [{ 1: 1 }] : [] };
+    }
     // requestOtp: INSERT into otp_attempts
     if (sql.includes('INSERT INTO otp_attempts')) {
-      rows['otp'] = { id: params[0], phone_hash: params[1], code_hash: params[2], expires_at: params[3], attempt_count: 0, verified: false };
-      return { rows: [rows['otp']] };
+      store.otp = { id: params[0], phone_hash: params[1], code_hash: params[2], expires_at: params[3], attempt_count: 0, verified: false };
+      return { rows: [store.otp] };
     }
     // verifyOtp: SELECT otp
     if (sql.includes('SELECT id, code_hash')) {
-      if (!rows['otp'] || rows['otp'].verified) return { rows: [] };
-      return { rows: [rows['otp']] };
+      if (!store.otp || store.otp.verified) return { rows: [] };
+      return { rows: [store.otp] };
     }
     // verifyOtp: UPDATE attempt_count
     if (sql.includes('attempt_count = attempt_count + 1')) {
-      rows['otp'].attempt_count += 1;
+      if (store.otp) store.otp.attempt_count += 1;
       return { rows: [] };
     }
     // verifyOtp: UPDATE verified
     if (sql.includes('verified = TRUE')) {
-      rows['otp'].verified = true;
+      if (store.otp) store.otp.verified = true;
       return { rows: [] };
     }
     // upsert user
@@ -45,21 +59,14 @@ jest.mock('../db/pool', () => {
     if (sql.includes('INSERT INTO visibility_states')) {
       return { rows: [] };
     }
+    // ban check
+    if (sql.includes('SELECT banned_at FROM users')) {
+      return { rows: [{ banned_at: null }] };
+    }
     return { rows: [] };
   });
   return { query };
 });
-
-// --- Mock redis ---
-const redisStore = {};
-jest.mock('../db/redis', () => ({
-  getRedis: async () => ({
-    incr: async (key) => { redisStore[key] = (redisStore[key] || 0) + 1; return redisStore[key]; },
-    expire: async () => {},
-    set: async (key, val) => { redisStore[key] = val; },
-    get: async (key) => redisStore[key] || null,
-  }),
-}));
 
 const app = require('../index');
 
@@ -158,7 +165,7 @@ describe('Refresh token revoked after logout', () => {
       { expiresIn: 604800 }
     );
 
-    // Step 1: logout — puts jti in Redis revoked set
+    // Step 1: logout — stores jti in Postgres revoked_tokens (mocked)
     const logoutRes = await request(app)
       .delete('/api/v1/auth/session')
       .send({ refresh_token: refreshToken });

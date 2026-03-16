@@ -21,8 +21,9 @@ const internalRoutes   = require('./routes/internal');
 const { errorHandler } = require('./middleware/errorHandler');
 const pool             = require('./db/pool');
 
-// Ensure voice upload directory exists
+// Ensure local upload directories exist (used when FIREBASE_STORAGE_BUCKET is not set)
 require('fs').mkdirSync(path.join(__dirname, '..', 'uploads', 'voice'), { recursive: true });
+require('fs').mkdirSync(path.join(__dirname, '..', 'uploads', 'photos'), { recursive: true });
 
 const app = express();
 
