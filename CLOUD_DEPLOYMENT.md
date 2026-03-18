@@ -16,18 +16,21 @@ Branch: `feature/firebase-migration`
 
 ## Phase 1 — Firebase Auth
 
-### 1. Enable Firebase Phone Authentication
-Firebase Console → Authentication → Sign-in method → Phone → Enable
+### 1. Enable Firebase Email/Password Authentication
+Firebase Console → Authentication → Sign-in method → Email/Password → Enable
 
-### 2. Create a service account key
+### 2. Create a service account key (local / non-Cloud-Run environments only)
 Firebase Console → Project Settings → Service Accounts → Generate new private key
 Save the JSON file **outside the repo**. Never commit it.
 
+On Cloud Run, leave `FIREBASE_SERVICE_ACCOUNT` unset — the runtime uses Application
+Default Credentials (ADC) automatically. See the ADC note in Phase 4.
+
 ### 3. Set env vars
 ```
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_SERVICE_ACCOUNT=/absolute/path/to/key.json
-# OR pass as JSON string:
+FIREBASE_PROJECT_ID=your-project-id          # required
+FIREBASE_SERVICE_ACCOUNT=/absolute/path/to/key.json   # local dev only
+# OR pass as JSON string (local dev only):
 FIREBASE_SERVICE_ACCOUNT={"type":"service_account",...}
 ```
 
@@ -45,7 +48,7 @@ EXPO_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
 # Start backend with Firebase vars set
 cd backend && node src/index.js
 
-# Obtain a Firebase ID token (use Firebase Auth Emulator or real phone)
+# Obtain a Firebase ID token via Email/Password sign-in
 curl -X POST http://localhost:3000/api/v1/auth/firebase/verify \
   -H 'Content-Type: application/json' \
   -d '{"id_token": "<firebase-id-token>"}'
@@ -103,8 +106,32 @@ service firebase.storage {
 
 ### 2. Set env var
 ```
-FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+FIREBASE_STORAGE_BUCKET=your-project.appspot.com   # required
 ```
+
+### 3. Signed URL expiry — important operational note
+The backend returns Firebase Storage signed URLs to clients. These URLs expire after
+**7 days**. Any profile photo or voice-note URL stored in the database will return
+HTTP 403 after expiry.
+
+Before production launch, implement a URL refresh strategy. Two options:
+- Regenerate signed URLs at read time by calling `storageService.getSignedUrl(filePath)` instead of persisting the URL.
+- Store the GCS object path in the database and resolve to a signed URL in the API layer on every read.
+
+### 4. Signed URL IAM requirement — CRITICAL
+The Cloud Run service account must be able to sign blobs in order for
+`file.getSignedUrl()` to work. Without this, every photo and voice-note upload will
+fail at runtime with a permissions error.
+
+Grant the service account the `roles/iam.serviceAccountTokenCreator` role on itself:
+```bash
+gcloud projects add-iam-policy-binding <PROJECT_ID> \
+  --member="serviceAccount:<SERVICE_ACCOUNT_EMAIL>" \
+  --role="roles/iam.serviceAccountTokenCreator"
+```
+
+Replace `<PROJECT_ID>` with your GCP project ID and `<SERVICE_ACCOUNT_EMAIL>` with
+the email of the Cloud Run service account (visible in Cloud Run → Service → Security).
 
 ---
 
@@ -127,14 +154,34 @@ gcloud run deploy bubble-backend \
   --set-env-vars NODE_ENV=production \
   --set-env-vars FIREBASE_PROJECT_ID=<project-id> \
   --set-env-vars FIREBASE_STORAGE_BUCKET=<project>.appspot.com
+# Do NOT set FIREBASE_SERVICE_ACCOUNT on Cloud Run — ADC is used automatically.
+# Do NOT set STORAGE_BASE_URL — Firebase Storage is used for all file serving.
 ```
 
-### 3. Use Secret Manager for sensitive vars
+### 3. ADC note for Cloud Run
+On Cloud Run, leave `FIREBASE_SERVICE_ACCOUNT` unset. The service runs as the
+Cloud Run service account and uses Application Default Credentials (ADC) automatically.
+
+Grant the Cloud Run service account the following roles:
+- `roles/firebaseauth.admin` — to verify and manage Firebase Auth tokens
+- `roles/storage.objectAdmin` — to read and write objects in Firebase Storage
+- `roles/iam.serviceAccountTokenCreator` — to sign blobs for `getSignedUrl()`
+
+```bash
+SA=<SERVICE_ACCOUNT_EMAIL>
+PROJECT=<PROJECT_ID>
+for ROLE in roles/firebaseauth.admin roles/storage.objectAdmin roles/iam.serviceAccountTokenCreator; do
+  gcloud projects add-iam-policy-binding $PROJECT \
+    --member="serviceAccount:$SA" \
+    --role="$ROLE"
+done
+```
+
+### 4. Use Secret Manager for sensitive vars
 ```bash
 # Create secrets
 echo -n "<value>" | gcloud secrets create JWT_ACCESS_SECRET --data-file=-
 echo -n "<value>" | gcloud secrets create JWT_REFRESH_SECRET --data-file=-
-echo -n "<value>" | gcloud secrets create PHONE_HMAC_SECRET --data-file=-
 echo -n "<value>" | gcloud secrets create ADMIN_SECRET --data-file=-
 echo -n "<value>" | gcloud secrets create DATABASE_URL --data-file=-
 
@@ -148,13 +195,13 @@ gcloud secrets add-iam-policy-binding JWT_ACCESS_SECRET \
 # --set-secrets JWT_ACCESS_SECRET=JWT_ACCESS_SECRET:latest
 ```
 
-### 4. Update frontend API URL
+### 5. Update frontend API URL
 ```
 # frontend/.env (or set in EAS build secrets)
 EXPO_PUBLIC_API_URL=https://<cloud-run-url>/api/v1
 ```
 
-### 5. Verify
+### 6. Verify
 ```bash
 curl https://<cloud-run-url>/health
 # Expected: {"status":"ok"}
@@ -178,11 +225,8 @@ curl https://<cloud-run-url>/health
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
 | `JWT_ACCESS_SECRET` | Yes | 32+ byte random hex |
 | `JWT_REFRESH_SECRET` | Yes | 32+ byte random hex |
-| `PHONE_HMAC_SECRET` | Yes | 32+ byte random hex |
 | `ADMIN_SECRET` | Yes | Internal API secret |
-| `STORAGE_BASE_URL` | Yes | Backend public URL (for local storage URLs) |
-| `FIREBASE_PROJECT_ID` | Phase 1+ | Firebase project ID |
-| `FIREBASE_SERVICE_ACCOUNT` | Phase 1+ | Service account JSON or path |
-| `FIREBASE_STORAGE_BUCKET` | Phase 3+ | GCS bucket name |
-| `REDIS_URL` | No | Retired in Phase 2 |
+| `FIREBASE_PROJECT_ID` | Yes | Firebase project ID |
+| `FIREBASE_STORAGE_BUCKET` | Yes | GCS bucket name (e.g. `your-project.appspot.com`) |
+| `FIREBASE_SERVICE_ACCOUNT` | No (local dev only) | Service account JSON or path. Leave unset on Cloud Run — ADC is used automatically. |
 | `PORT` | No | Default 3000 |

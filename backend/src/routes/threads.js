@@ -7,7 +7,7 @@ const { authRequired } = require('../middleware/auth');
 const { getThreadsForUser, getMessages, sendMessage, addVoiceNote } = require('../services/chatService');
 const storageService   = require('../services/storageService');
 
-// Use memory storage for voice notes — storageService decides local disk vs Firebase.
+// Use memory storage for voice notes — storageService uploads to Firebase Storage.
 const voiceUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },

@@ -27,14 +27,9 @@ function getFirebaseAdmin() {
   }
 
   let credential;
-  if (serviceAccountEnv) {
-    // Accept either a JSON string or a file path
-    let serviceAccount;
-    if (serviceAccountEnv.trim().startsWith('{')) {
-      serviceAccount = JSON.parse(serviceAccountEnv);
-    } else {
-      serviceAccount = require(serviceAccountEnv);
-    }
+  if (serviceAccountEnv && serviceAccountEnv.trim().startsWith('{')) {
+    // JSON string — parse and use directly
+    const serviceAccount = JSON.parse(serviceAccountEnv);
     credential = admin.credential.cert(serviceAccount);
   } else {
     // Fall back to Application Default Credentials (works on Cloud Run / GCE)

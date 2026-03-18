@@ -11,8 +11,8 @@ import {
   Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { registerEmail, loginEmail, verifyFirebaseIdToken } from '../api/auth';
-import { isFirebaseEnabled, signInOrRegisterWithEmail } from '../lib/firebase';
+import { verifyFirebaseIdToken } from '../api/auth';
+import { signInOrRegisterWithEmail } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../theme';
 
@@ -72,21 +72,9 @@ export default function EmailLoginScreen() {
     setErrorMsg('');
 
     try {
-      let data;
-
-      if (isFirebaseEnabled()) {
-        // Firebase Email Auth path
-        const credential = await signInOrRegisterWithEmail(email.trim(), password, isRegistering);
-        const idToken = await credential.user.getIdToken();
-        data = await verifyFirebaseIdToken(idToken);
-      } else {
-        // Direct backend path (dev fallback)
-        if (isRegistering) {
-          data = await registerEmail(email.trim(), password);
-        } else {
-          data = await loginEmail(email.trim(), password);
-        }
-      }
+      const credential = await signInOrRegisterWithEmail(email.trim(), password, isRegistering);
+      const idToken = await credential.user.getIdToken();
+      const data = await verifyFirebaseIdToken(idToken);
 
       await signIn(data);
     } catch (err) {

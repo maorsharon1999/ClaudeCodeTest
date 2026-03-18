@@ -1,15 +1,5 @@
 import client from './client';
 
-export async function registerEmail(email, password) {
-  const response = await client.post('/auth/register', { email, password });
-  return response.data; // { access_token, refresh_token, user_id, profile_complete }
-}
-
-export async function loginEmail(email, password) {
-  const response = await client.post('/auth/login', { email, password });
-  return response.data; // { access_token, refresh_token, user_id, profile_complete }
-}
-
 export async function refreshToken(refresh_token) {
   // Call without interceptors to avoid infinite loop — use raw axios config
   const response = await client.post(

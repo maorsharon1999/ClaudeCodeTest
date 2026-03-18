@@ -12,10 +12,6 @@ RUN npm ci --omit=dev
 # Copy source
 COPY src/ ./src/
 
-# Cloud Run: static uploads dir not needed (Firebase Storage handles files)
-# Create empty dirs so the app doesn't crash on boot in hybrid mode
-RUN mkdir -p uploads/voice uploads/photos
-
 # Run as non-root
 USER app
 
