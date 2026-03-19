@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { setVisibility, getProfile } from '../api/profile';
+import { resolvePhotoUrl } from '../lib/photoUrl';
 import { useAuth } from '../context/AuthContext';
 import { getIncomingSignals } from '../api/signals';
 import { useFocusEffect } from '@react-navigation/native';
@@ -123,11 +124,7 @@ export default function HomeScreen({ navigation }) {
     getProfile().then(p => {
       const raw = p?.photos?.[0];
       if (raw) {
-        // Replace localhost with the configured API host so device can reach it
-        const apiBase = process.env.EXPO_PUBLIC_API_URL || '';
-        const host = apiBase ? apiBase.replace('/api/v1', '') : '';
-        const url = host ? raw.replace(/^http:\/\/localhost:\d+/, host) : raw;
-        setProfilePhoto(url);
+        setProfilePhoto(resolvePhotoUrl(raw));
       }
     }).catch(() => {});
   }, []);
@@ -208,6 +205,7 @@ export default function HomeScreen({ navigation }) {
               source={{ uri: profilePhoto }}
               style={homeStyles.orbPhoto}
               resizeMode="cover"
+              onError={() => setProfilePhoto(null)}
             />
           )}
           <Animated.View style={[homeStyles.orbInner, { backgroundColor: profilePhoto ? 'rgba(0,0,0,0.15)' : orbBg }]}>
@@ -224,6 +222,19 @@ export default function HomeScreen({ navigation }) {
       <Text style={homeStyles.hint}>
         {isVisible ? 'Others nearby can see you.' : 'You are hidden from everyone.'}
       </Text>
+
+      {!profilePhoto && (
+        <View style={homeStyles.photoPromptCard}>
+          <Text style={homeStyles.photoPromptText}>No profile photo found.</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ProfileEdit')}
+            accessibilityRole="button"
+            accessibilityLabel="Add a profile photo"
+          >
+            <Text style={homeStyles.photoPromptLink}>Add a photo to be visible to others</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <View style={homeStyles.navRow}>
         <Animated.View style={{ transform: [{ scale: navSignalScale }] }}>
@@ -410,4 +421,25 @@ const homeStyles = StyleSheet.create({
     padding: 8,
   },
   signOutText: { fontSize: 14, color: theme.colors.textFaint, textDecorationLine: 'underline' },
+  photoPromptCard: {
+    marginTop: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: theme.colors.badgePurpleBg,
+    borderRadius: theme.radii.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(108,71,255,0.15)',
+  },
+  photoPromptText: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginBottom: 4,
+  },
+  photoPromptLink: {
+    fontSize: 13,
+    color: theme.colors.brand,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
 });

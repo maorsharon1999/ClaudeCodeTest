@@ -1,11 +1,15 @@
 'use strict';
 const pool = require('../db/pool');
+const { makeError, UUID_RE } = require('../utils/errors');
 
-function makeError(status, code, message) {
-  const err = new Error(message);
-  err.status = status;
-  err.code = code;
-  return err;
+async function assertNotBlocked(userA, userB) {
+  const result = await pool.query(
+    `SELECT 1 FROM blocks WHERE (blocker_id = $1 AND blocked_id = $2) OR (blocker_id = $2 AND blocked_id = $1)`,
+    [userA, userB]
+  );
+  if (result.rows.length > 0) {
+    throw makeError(403, 'FORBIDDEN', 'You are not a member of this thread.');
+  }
 }
 
 // Returns all threads for the caller where:
@@ -90,8 +94,6 @@ async function getThreadsForUser(userId) {
   }));
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 async function getMessages(threadId, callerId, { before = null, limit = 50 } = {}) {
   if (!UUID_RE.test(threadId)) {
     throw makeError(404, 'NOT_FOUND', 'Thread not found.');
@@ -110,15 +112,8 @@ async function getMessages(threadId, callerId, { before = null, limit = 50 } = {
     throw makeError(403, 'FORBIDDEN', 'You are not a member of this thread.');
   }
 
-  // Check bilateral block
   const otherId = callerId === user_a_id ? user_b_id : user_a_id;
-  const blockResult = await pool.query(
-    `SELECT 1 FROM blocks WHERE (blocker_id = $1 AND blocked_id = $2) OR (blocker_id = $2 AND blocked_id = $1)`,
-    [callerId, otherId]
-  );
-  if (blockResult.rows.length > 0) {
-    throw makeError(403, 'FORBIDDEN', 'You are not a member of this thread.');
-  }
+  await assertNotBlocked(callerId, otherId);
 
   const clampedLimit = Math.min(Math.max(parseInt(limit) || 50, 1), 100);
 
@@ -177,15 +172,8 @@ async function sendMessage(threadId, callerId, body) {
     throw makeError(403, 'FORBIDDEN', 'You are not a member of this thread.');
   }
 
-  // Check bilateral block
   const otherId = callerId === user_a_id ? user_b_id : user_a_id;
-  const blockResult = await pool.query(
-    `SELECT 1 FROM blocks WHERE (blocker_id = $1 AND blocked_id = $2) OR (blocker_id = $2 AND blocked_id = $1)`,
-    [callerId, otherId]
-  );
-  if (blockResult.rows.length > 0) {
-    throw makeError(403, 'FORBIDDEN', 'You are not a member of this thread.');
-  }
+  await assertNotBlocked(callerId, otherId);
 
   const insertResult = await pool.query(
     `INSERT INTO chat_messages (thread_id, sender_id, body)
@@ -220,15 +208,8 @@ async function addVoiceNote(userId, threadId, voiceNoteUrl, durationS) {
     throw makeError(403, 'FORBIDDEN', 'You are not a member of this thread.');
   }
 
-  // Check bilateral block
   const otherId = userId === user_a_id ? user_b_id : user_a_id;
-  const blockResult = await pool.query(
-    `SELECT 1 FROM blocks WHERE (blocker_id = $1 AND blocked_id = $2) OR (blocker_id = $2 AND blocked_id = $1)`,
-    [userId, otherId]
-  );
-  if (blockResult.rows.length > 0) {
-    throw makeError(403, 'FORBIDDEN', 'You are not a member of this thread.');
-  }
+  await assertNotBlocked(userId, otherId);
 
   const insertResult = await pool.query(
     `INSERT INTO chat_messages (thread_id, sender_id, voice_note_url, voice_note_duration_s)

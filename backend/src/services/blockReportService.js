@@ -1,14 +1,6 @@
 'use strict';
 const pool = require('../db/pool');
-
-function makeError(status, code, message) {
-  const err = new Error(message);
-  err.status = status;
-  err.code = code;
-  return err;
-}
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const { makeError, UUID_RE } = require('../utils/errors');
 
 async function blockUser(blockerId, blockedId) {
   if (!blockedId) {

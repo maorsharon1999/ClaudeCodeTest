@@ -8,7 +8,7 @@ async function getVisibility(userId) {
     `SELECT state, updated_at FROM visibility_states WHERE user_id = $1`,
     [userId]
   );
-  // Row is guaranteed to exist (created on first OTP verify), but guard anyway
+  // Row is guaranteed to exist (created on Firebase auth signup), but guard anyway
   return rows[0] || { state: 'invisible', updated_at: new Date() };
 }
 

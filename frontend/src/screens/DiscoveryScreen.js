@@ -11,7 +11,6 @@ import {
   RefreshControl,
   Animated,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { updateLocation, getNearbyUsers } from '../api/discovery';
 import { sendSignal, getOutgoingSignals } from '../api/signals';
@@ -259,12 +258,7 @@ export default function DiscoveryScreen() {
                   accessibilityLabel={signalledIds.has(item.user_id) ? 'Signal sent' : 'Send signal'}
                 >
                   {!signalledIds.has(item.user_id) && (
-                    <LinearGradient
-                      colors={theme.gradients.brand}
-                      style={StyleSheet.absoluteFill}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                    />
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.gradients.brand?.[0] ?? '#6C47FF' }]} />
                   )}
                   <Text style={styles.signalBtnText}>
                     {signalledIds.has(item.user_id) ? 'Sent \u2713' : 'Signal'}

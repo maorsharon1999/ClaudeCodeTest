@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import client from '../api/client';
+import { resolvePhotoUrl } from '../lib/photoUrl';
 import { theme } from '../theme';
 
 async function getBlockedUsers() {
@@ -98,10 +99,7 @@ export default function BlockedUsersScreen() {
       keyExtractor={item => item.blocked_id}
       ItemSeparatorComponent={() => <View style={styles.separator} />}
       renderItem={({ item }) => {
-        const apiBase = process.env.EXPO_PUBLIC_API_URL || '';
-        const host = apiBase ? apiBase.replace('/api/v1', '') : '';
-        const rawPhoto = item.photos?.[0];
-        const photoUrl = rawPhoto && host ? rawPhoto.replace(/^http:\/\/localhost:\d+/, host) : rawPhoto;
+        const photoUrl = resolvePhotoUrl(item.photos?.[0]);
 
         return (
           <View style={styles.row}>

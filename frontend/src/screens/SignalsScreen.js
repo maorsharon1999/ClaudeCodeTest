@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Animated,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { getIncomingSignals, getOutgoingSignals, respondSignal } from '../api/signals';
 import Toast from '../components/Toast';
@@ -117,12 +116,7 @@ export default function SignalsScreen({ navigation }) {
             accessibilityRole="button"
             accessibilityLabel="Approve signal"
           >
-            <LinearGradient
-              colors={theme.gradients.success}
-              style={StyleSheet.absoluteFill}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.gradients.success?.[0] ?? '#4CAF50' }]} />
             <Text style={styles.approveBtnText}>{'Approve \u2713'}</Text>
           </TouchableOpacity>
         </Animated.View>

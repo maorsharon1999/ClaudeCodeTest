@@ -185,6 +185,12 @@ async function findOrCreateByFirebaseUid(firebaseUid, _phoneNumber, email) {
     [userId]
   );
 
+  // Ensure a blank profile row exists so photo uploads work before profile setup completes
+  await pool.query(
+    `INSERT INTO profiles (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
+    [userId]
+  );
+
   return { userId, isNew: true };
 }
 
@@ -199,4 +205,4 @@ async function issueTokensForUser(userId) {
   return { accessToken, refreshToken };
 }
 
-module.exports = { refreshAccessToken, deleteSession, deleteAccount, verifyFirebaseToken, findOrCreateByFirebaseUid, issueTokensForUser, issueAccessToken, issueRefreshToken, revokeRefreshToken, isRefreshTokenRevoked };
+module.exports = { refreshAccessToken, deleteSession, deleteAccount, verifyFirebaseToken, findOrCreateByFirebaseUid, issueTokensForUser };

@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Animated,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { verifyFirebaseIdToken } from '../api/auth';
 import { signInOrRegisterWithEmail } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
@@ -116,12 +115,7 @@ export default function EmailLoginScreen() {
         <View style={styles.decorCircle} />
 
         <Text style={styles.title}>Bubble</Text>
-        <LinearGradient
-          colors={['#6C47FF', '#FF6C47']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.accentBar}
-        />
+        <View style={[styles.accentBar, { backgroundColor: '#6C47FF' }]} />
         <Text style={styles.subtitle}>
           {isRegistering ? 'Create your account' : 'Welcome back'}
         </Text>
@@ -176,12 +170,7 @@ export default function EmailLoginScreen() {
             accessibilityLabel={isRegistering ? 'Create account' : 'Sign in'}
           >
             {!isSubmitting && (
-              <LinearGradient
-                colors={theme.gradients.brand}
-                style={StyleSheet.absoluteFill}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              />
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.gradients.brand?.[0] ?? '#6C47FF' }]} />
             )}
             {isSubmitting ? (
               <ActivityIndicator color="#fff" />

@@ -13,7 +13,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getMessages, sendMessage, blockUser, reportUser, uploadVoiceNote } from '../api/chat';
@@ -255,15 +254,10 @@ export default function ThreadScreen({ route, navigation }) {
             isOwn={isMine}
           />
         ) : isMine ? (
-          <LinearGradient
-            colors={['#7B5CFF', '#6C47FF']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.bubble, styles.bubbleMine]}
-          >
+          <View style={[styles.bubble, styles.bubbleMine, { backgroundColor: '#6C47FF' }]}>
             <Text style={styles.bubbleTextMine}>{item.body}</Text>
             <Text style={styles.bubbleTimeMine}>{formatTime(item.sent_at)}</Text>
-          </LinearGradient>
+          </View>
         ) : (
           <View style={[styles.bubble, styles.bubbleTheirs]}>
             <Text style={styles.bubbleTextTheirs}>{item.body}</Text>
