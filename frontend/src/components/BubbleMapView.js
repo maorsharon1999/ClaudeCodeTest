@@ -1,167 +1,225 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   Animated,
   StyleSheet,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import * as Location from 'expo-location';
 import { theme } from '../theme';
-import BubbleMarker from './BubbleMarker';
+import { getNearbyBubbles } from '../api/bubbles';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
+const POLL_INTERVAL = 15000;
 
-export default function BubbleMapView({ users, myLocation, signalledIds, onSignal, currentUserPhoto, currentUserName }) {
-  const [selectedUser, setSelectedUser] = useState(null);
+const CATEGORY_ICONS = {
+  Social: '🗣',
+  Study: '📚',
+  'Food & Drinks': '🍕',
+  Sports: '⚽',
+  Music: '🎵',
+  Nightlife: '🌙',
+  Outdoors: '🌿',
+  Gaming: '🎮',
+  Tech: '💻',
+  Art: '🎨',
+  Other: '📍',
+};
+
+function timeRemaining(expiresAt) {
+  const diff = new Date(expiresAt) - new Date();
+  if (diff <= 0) return 'Expired';
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+export default function BubbleMapView({ navigation }) {
+  const [bubbles, setBubbles] = useState([]);
+  const [selectedBubble, setSelectedBubble] = useState(null);
+  const [myLocation, setMyLocation] = useState(null);
+  const [joining, setJoining] = useState(false);
   const cardAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const mapRef = useRef(null);
+  const pollRef = useRef(null);
 
-  function openCard(user) {
-    setSelectedUser(user);
-    Animated.timing(cardAnim, {
-      toValue: 0,
-      duration: 280,
-      useNativeDriver: true,
-    }).start();
+  // Get location and fetch bubbles
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+      setMyLocation(coords);
+      fetchBubbles(coords.latitude, coords.longitude);
+    })();
+  }, []);
+
+  // Poll for nearby bubbles
+  useEffect(() => {
+    if (!myLocation) return;
+    pollRef.current = setInterval(() => {
+      fetchBubbles(myLocation.latitude, myLocation.longitude);
+    }, POLL_INTERVAL);
+    return () => clearInterval(pollRef.current);
+  }, [myLocation]);
+
+  async function fetchBubbles(lat, lng) {
+    try {
+      const result = await getNearbyBubbles(lat, lng);
+      setBubbles(result || []);
+    } catch {
+      // ignore fetch errors
+    }
+  }
+
+  function openCard(bubble) {
+    setSelectedBubble(bubble);
+    Animated.timing(cardAnim, { toValue: 0, duration: 280, useNativeDriver: true }).start();
   }
 
   function dismissCard() {
-    Animated.timing(cardAnim, {
-      toValue: SCREEN_HEIGHT,
-      duration: 220,
-      useNativeDriver: true,
-    }).start(() => setSelectedUser(null));
+    Animated.timing(cardAnim, { toValue: SCREEN_HEIGHT, duration: 220, useNativeDriver: true })
+      .start(() => setSelectedBubble(null));
   }
 
-  function handleSignal(userId) {
-    onSignal(userId);
-    dismissCard();
+  async function handleJoin() {
+    if (!selectedBubble || joining) return;
+    setJoining(true);
+    try {
+      const { joinBubble } = require('../api/bubbles');
+      await joinBubble(selectedBubble.id);
+      dismissCard();
+      navigation.navigate('BubbleChat', {
+        bubbleId: selectedBubble.id,
+        bubbleTitle: selectedBubble.title,
+      });
+    } catch {
+      // ignore
+    } finally {
+      setJoining(false);
+    }
+  }
+
+  function centerOnMe() {
+    if (!myLocation) return;
+    mapRef.current?.animateToRegion({
+      ...myLocation,
+      latitudeDelta: 0.018,
+      longitudeDelta: 0.018,
+    }, 400);
+  }
+
+  if (!myLocation) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={theme.colors.brand} />
+        <Text style={styles.loadingText}>Getting your location...</Text>
+      </View>
+    );
   }
 
   return (
     <View style={styles.container}>
       <MapView
+        ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
         initialRegion={{
-          latitude: myLocation.latitude,
-          longitude: myLocation.longitude,
+          ...myLocation,
           latitudeDelta: 0.018,
           longitudeDelta: 0.018,
         }}
-        showsUserLocation={false}
+        showsUserLocation={true}
         showsMyLocationButton={false}
       >
-        {/* My location — current user bubble marker */}
-        <Marker
-          coordinate={myLocation}
-          anchor={{ x: 0.5, y: 1.0 }}
-          tracksViewChanges={false}
-        >
-          <BubbleMarker
-            photoUrl={currentUserPhoto}
-            name={currentUserName}
-            isCurrentUser={true}
-          />
-        </Marker>
-
-        {/* Nearby user markers */}
-        {users.map((user) => (
+        {bubbles.map((b) => (
           <Marker
-            key={user.user_id}
-            coordinate={{
-              latitude: user.jittered_lat,
-              longitude: user.jittered_lng,
-            }}
-            anchor={{ x: 0.5, y: 1.0 }}
+            key={b.id}
+            coordinate={{ latitude: b.jittered_lat || b.lat, longitude: b.jittered_lng || b.lng }}
+            anchor={{ x: 0.5, y: 0.5 }}
             tracksViewChanges={false}
-            onPress={() => openCard(user)}
+            onPress={() => openCard(b)}
           >
-            <BubbleMarker
-              photoUrl={user.photos?.[0] ?? null}
-              name={user.display_name ?? null}
-            />
+            <View style={styles.marker}>
+              <Text style={styles.markerIcon}>{CATEGORY_ICONS[b.category] || '📍'}</Text>
+              <View style={styles.markerBadge}>
+                <Text style={styles.markerBadgeText}>
+                  {b.member_count <= 2 ? 'A few' : b.member_count}
+                </Text>
+              </View>
+            </View>
           </Marker>
         ))}
       </MapView>
 
-      {/* Tap-outside overlay — sits behind the card, above the map */}
-      {selectedUser ? (
-        <TouchableOpacity
-          style={styles.dismissOverlay}
-          onPress={dismissCard}
-          activeOpacity={1}
-        />
+      {/* Center-on-me button */}
+      <TouchableOpacity style={styles.locateBtn} onPress={centerOnMe} accessibilityLabel="Center on my location">
+        <Text style={styles.locateBtnIcon}>◎</Text>
+      </TouchableOpacity>
+
+      {/* Create bubble FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate('CreateBubble')}
+        accessibilityRole="button"
+        accessibilityLabel="Create a bubble"
+      >
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
+
+      {/* Tap-outside dismiss overlay */}
+      {selectedBubble ? (
+        <TouchableOpacity style={styles.dismissOverlay} onPress={dismissCard} activeOpacity={1} />
       ) : null}
 
       {/* Slide-up detail card */}
-      {selectedUser ? (
-        <Animated.View
-          style={[styles.card, theme.shadows.card, { transform: [{ translateY: cardAnim }] }]}
-        >
-          <View style={styles.cardInner}>
-            {selectedUser.photos?.[0] ? (
-              <Image source={{ uri: selectedUser.photos[0] }} style={styles.cardPhoto} />
-            ) : (
-              <View style={[styles.cardPhoto, styles.cardPhotoFallback]}>
-                <Text style={styles.cardPhotoInitial}>
-                  {selectedUser.display_name?.[0]?.toUpperCase() ?? '?'}
-                </Text>
-              </View>
-            )}
-
-            <View style={styles.cardInfo}>
-              <View style={styles.cardNameRow}>
-                <Text style={styles.cardName}>
-                  {selectedUser.display_name}, {selectedUser.age}
-                </Text>
-                <View
-                  style={[
-                    styles.badge,
-                    selectedUser.proximity_bucket === 'nearby'
-                      ? styles.badgeNearby
-                      : styles.badgeSameArea,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.badgeText,
-                      selectedUser.proximity_bucket === 'nearby'
-                        ? styles.badgeTextNearby
-                        : styles.badgeTextSameArea,
-                    ]}
-                  >
-                    {selectedUser.proximity_bucket === 'nearby' ? 'Nearby' : 'Same area'}
-                  </Text>
+      {selectedBubble ? (
+        <Animated.View style={[styles.card, theme.shadows.card, { transform: [{ translateY: cardAnim }] }]}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardIcon}>{CATEGORY_ICONS[selectedBubble.category] || '📍'}</Text>
+            <View style={styles.cardHeaderInfo}>
+              <Text style={styles.cardTitle} numberOfLines={2}>{selectedBubble.title}</Text>
+              <View style={styles.cardMeta}>
+                <View style={styles.categoryBadge}>
+                  <Text style={styles.categoryBadgeText}>{selectedBubble.category}</Text>
                 </View>
+                <Text style={styles.cardMetaText}>
+                  {selectedBubble.member_count <= 2 ? 'A few' : selectedBubble.member_count} people · {timeRemaining(selectedBubble.expires_at)} left
+                </Text>
               </View>
-
-              {selectedUser.bio ? (
-                <Text style={styles.cardBio} numberOfLines={3} ellipsizeMode="tail">
-                  {selectedUser.bio}
-                </Text>
-              ) : null}
-
-              <TouchableOpacity
-                style={[
-                  styles.signalBtn,
-                  signalledIds.has(selectedUser.user_id) && styles.signalBtnSent,
-                ]}
-                onPress={() => handleSignal(selectedUser.user_id)}
-                disabled={signalledIds.has(selectedUser.user_id)}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  signalledIds.has(selectedUser.user_id) ? 'Signal sent' : 'Send signal'
-                }
-              >
-                <Text style={styles.signalBtnText}>
-                  {signalledIds.has(selectedUser.user_id) ? 'Sent \u2713' : 'Signal'}
-                </Text>
-              </TouchableOpacity>
             </View>
           </View>
+
+          {selectedBubble.description ? (
+            <Text style={styles.cardDesc} numberOfLines={3}>{selectedBubble.description}</Text>
+          ) : null}
+
+          {selectedBubble.distance_m != null && (
+            <Text style={styles.cardDistance}>
+              {selectedBubble.distance_m < 1000
+                ? `${Math.round(selectedBubble.distance_m)}m away`
+                : `${(selectedBubble.distance_m / 1000).toFixed(1)}km away`}
+            </Text>
+          )}
+
+          <TouchableOpacity
+            style={styles.joinBtn}
+            onPress={handleJoin}
+            disabled={joining}
+            accessibilityRole="button"
+            accessibilityLabel="Join this bubble"
+          >
+            {joining ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.joinBtnText}>Join Bubble</Text>
+            )}
+          </TouchableOpacity>
         </Animated.View>
       ) : null}
     </View>
@@ -169,19 +227,67 @@ export default function BubbleMapView({ users, myLocation, signalledIds, onSigna
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  container: { flex: 1 },
+  map: { ...StyleSheet.absoluteFillObject },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.bgBase },
+  loadingText: { marginTop: 12, color: theme.colors.textMuted, fontSize: 15 },
+
+  // Markers
+  marker: { alignItems: 'center' },
+  markerIcon: { fontSize: 28 },
+  markerBadge: {
+    backgroundColor: theme.colors.brand,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    marginTop: 2,
+    minWidth: 20,
+    alignItems: 'center',
   },
-  map: {
-    ...StyleSheet.absoluteFillObject,
+  markerBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+
+  // Buttons
+  locateBtn: {
+    position: 'absolute',
+    bottom: 92,
+    right: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: theme.colors.bgSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.borderSubtle,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
-  // Marker styles moved to BubbleMarker component
-  // Dismiss overlay (behind card, above map)
-  dismissOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
+  locateBtnIcon: { fontSize: 22, color: theme.colors.brand, lineHeight: 26 },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 16,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#6C47FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
-  // Slide-up card
+  fabText: { fontSize: 28, color: '#fff', lineHeight: 32, fontWeight: '300' },
+
+  // Overlay
+  dismissOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'transparent' },
+
+  // Card
   card: {
     position: 'absolute',
     bottom: 0,
@@ -194,71 +300,28 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: theme.colors.borderSubtle,
   },
-  cardInner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  cardPhoto: {
-    width: 72,
-    height: 72,
-    borderRadius: theme.radii.md,
-    marginRight: theme.spacing.md,
-    backgroundColor: theme.colors.bgDim,
-  },
-  cardPhotoFallback: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardPhotoInitial: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: theme.colors.textMuted,
-  },
-  cardInfo: {
-    flex: 1,
-  },
-  cardNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  cardName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: theme.colors.textBody,
-    flex: 1,
-    marginRight: 8,
-  },
-  cardBio: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  badge: {
+  cardHeader: { flexDirection: 'row', alignItems: 'flex-start' },
+  cardIcon: { fontSize: 36, marginRight: 12 },
+  cardHeaderInfo: { flex: 1 },
+  cardTitle: { fontSize: 18, fontWeight: '700', color: theme.colors.textBody, marginBottom: 6 },
+  cardMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  categoryBadge: {
+    backgroundColor: theme.colors.badgePurpleBg,
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
-  badgeNearby: { backgroundColor: theme.colors.badgePurpleBg },
-  badgeSameArea: { backgroundColor: theme.colors.bgDim },
-  badgeText: { fontSize: 12, fontWeight: '600' },
-  badgeTextNearby: { color: theme.colors.brand },
-  badgeTextSameArea: { color: theme.colors.textMuted },
-  signalBtn: {
-    alignSelf: 'flex-start',
+  categoryBadgeText: { fontSize: 12, fontWeight: '600', color: theme.colors.brand },
+  cardMetaText: { fontSize: 12, color: theme.colors.textMuted },
+  cardDesc: { fontSize: 14, color: theme.colors.textSecondary, lineHeight: 20, marginTop: 12 },
+  cardDistance: { fontSize: 13, color: theme.colors.textMuted, marginTop: 8 },
+  joinBtn: {
+    height: 48,
     backgroundColor: theme.colors.brand,
     borderRadius: theme.radii.pill,
-    paddingVertical: 9,
-    paddingHorizontal: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 16,
   },
-  signalBtnSent: {
-    backgroundColor: theme.colors.disabled,
-  },
-  signalBtnText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
+  joinBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

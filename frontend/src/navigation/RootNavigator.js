@@ -16,6 +16,8 @@ import ChatsScreen from '../screens/ChatsScreen';
 import ThreadScreen from '../screens/ThreadScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import BlockedUsersScreen from '../screens/BlockedUsersScreen';
+import CreateBubbleScreen from '../screens/CreateBubbleScreen';
+import BubbleChatScreen from '../screens/BubbleChatScreen';
 
 const AuthStack = createNativeStackNavigator();
 const AppStack = createNativeStackNavigator();
@@ -70,6 +72,16 @@ function AppNavigator() {
         name="BlockedUsers"
         component={BlockedUsersScreen}
         options={{ headerShown: true, title: 'Blocked Users' }}
+      />
+      <AppStack.Screen
+        name="CreateBubble"
+        component={CreateBubbleScreen}
+        options={{ headerShown: true, title: 'Create Bubble' }}
+      />
+      <AppStack.Screen
+        name="BubbleChat"
+        component={BubbleChatScreen}
+        options={{ headerShown: false }}
       />
     </AppStack.Navigator>
   );
