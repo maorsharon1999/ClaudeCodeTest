@@ -167,6 +167,11 @@ async function getNearbyBubbles(userId, lat, lng) {
      JOIN profiles p ON p.user_id = b.creator_id
      WHERE b.expires_at  > NOW()
        AND b.removed_at IS NULL
+       AND b.creator_id NOT IN (
+         SELECT blocked_id FROM blocks WHERE blocker_id = $1
+         UNION
+         SELECT blocker_id FROM blocks WHERE blocked_id = $1
+       )
        AND 6371000 * acos(LEAST(1.0,
              cos(radians($2)) * cos(radians(b.lat))
                * cos(radians(b.lng) - radians($3))

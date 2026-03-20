@@ -10,6 +10,7 @@ import {
   Platform,
   KeyboardAvoidingView,
   Image,
+  Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -18,7 +19,9 @@ import {
   sendBubbleMessage,
   getBubbleMembers,
   leaveBubble,
+  reportBubble,
 } from '../api/bubbles';
+import { blockUser, reportUser } from '../api/chat';
 import { resolvePhotoUrl } from '../lib/photoUrl';
 import { theme } from '../theme';
 
@@ -120,6 +123,62 @@ export default function BubbleChatScreen({ route, navigation }) {
     navigation.goBack();
   }
 
+  function handleReportBubble() {
+    Alert.prompt
+      ? Alert.prompt('Report Bubble', 'Why are you reporting this bubble?', [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Report',
+            style: 'destructive',
+            onPress: async (reason) => {
+              if (!reason?.trim()) return;
+              try {
+                await reportBubble(bubbleId, reason.trim());
+                Alert.alert('Reported', 'Thank you. We will review this bubble.');
+              } catch { /* ignore */ }
+            },
+          },
+        ])
+      : (async () => {
+          try {
+            await reportBubble(bubbleId, 'Reported from chat');
+            Alert.alert('Reported', 'Thank you. We will review this bubble.');
+          } catch { /* ignore */ }
+        })();
+  }
+
+  function handleBlockMember(userId, displayName) {
+    Alert.alert('Block User', `Block ${displayName || 'this user'}? You won't see each other in any bubbles.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Block',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await blockUser(userId);
+            Alert.alert('Blocked', `${displayName || 'User'} has been blocked.`);
+          } catch { /* ignore */ }
+        },
+      },
+    ]);
+  }
+
+  function handleReportMember(userId, displayName) {
+    Alert.alert('Report User', `Report ${displayName || 'this user'}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Report',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await reportUser(userId, 'Reported from bubble chat');
+            Alert.alert('Reported', 'Thank you. We will review this report.');
+          } catch { /* ignore */ }
+        },
+      },
+    ]);
+  }
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -192,14 +251,27 @@ export default function BubbleChatScreen({ route, navigation }) {
                   </View>
                 )}
                 <Text style={styles.memberName}>{item.display_name || 'Someone'}</Text>
+                <View style={styles.memberActions}>
+                  <TouchableOpacity onPress={() => handleReportMember(item.user_id, item.display_name)} style={styles.memberActionBtn}>
+                    <Text style={styles.memberActionText}>Report</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleBlockMember(item.user_id, item.display_name)} style={styles.memberActionBtn}>
+                    <Text style={[styles.memberActionText, { color: theme.colors.error }]}>Block</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             );
           }}
           contentContainerStyle={styles.membersList}
           ListFooterComponent={
-            <TouchableOpacity style={styles.leaveBtn} onPress={handleLeave}>
-              <Text style={styles.leaveBtnText}>Leave Bubble</Text>
-            </TouchableOpacity>
+            <View>
+              <TouchableOpacity style={styles.reportBubbleBtn} onPress={handleReportBubble}>
+                <Text style={styles.reportBubbleBtnText}>Report Bubble</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.leaveBtn} onPress={handleLeave}>
+                <Text style={styles.leaveBtnText}>Leave Bubble</Text>
+              </TouchableOpacity>
+            </View>
           }
         />
       ) : (
@@ -325,8 +397,15 @@ const styles = StyleSheet.create({
   memberInitial: { fontSize: 16, fontWeight: '700', color: theme.colors.textMuted },
   memberName: { fontSize: 15, fontWeight: '500', color: theme.colors.textBody },
 
-  // Leave
-  leaveBtn: { marginTop: 24, padding: 14, alignItems: 'center' },
+  // Member actions
+  memberActions: { flexDirection: 'row', marginLeft: 'auto', gap: 12 },
+  memberActionBtn: { padding: 4 },
+  memberActionText: { fontSize: 13, color: theme.colors.textMuted, fontWeight: '500' },
+
+  // Report & Leave
+  reportBubbleBtn: { marginTop: 24, padding: 14, alignItems: 'center' },
+  reportBubbleBtnText: { color: theme.colors.textMuted, fontSize: 14, fontWeight: '500' },
+  leaveBtn: { marginTop: 4, padding: 14, alignItems: 'center' },
   leaveBtnText: { color: theme.colors.error, fontSize: 15, fontWeight: '600' },
 
   // Expired
