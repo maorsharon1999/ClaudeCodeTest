@@ -16,6 +16,7 @@ const threadsRoutes    = require('./routes/threads');
 const blocksRoutes     = require('./routes/blocks');
 const reportsRoutes    = require('./routes/reports');
 const internalRoutes   = require('./routes/internal');
+const bubblesRoutes    = require('./routes/bubbles');
 const { errorHandler } = require('./middleware/errorHandler');
 const pool             = require('./db/pool');
 
@@ -38,6 +39,7 @@ app.use('/api/v1/threads',   threadsRoutes);
 app.use('/api/v1/blocks',    blocksRoutes);
 app.use('/api/v1/reports',   reportsRoutes);
 app.use('/internal',         internalRoutes);
+app.use('/api/v1/bubbles',   bubblesRoutes);
 
 // 404 handler
 app.use((_req, res) => {
