@@ -10,10 +10,7 @@ import EmailLoginScreen from '../screens/EmailLoginScreen';
 import ProfileSetupScreen from '../screens/ProfileSetupScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileEditScreen from '../screens/ProfileEditScreen';
-import DiscoveryScreen from '../screens/DiscoveryScreen';
-import SignalsScreen from '../screens/SignalsScreen';
 import ChatsScreen from '../screens/ChatsScreen';
-import ThreadScreen from '../screens/ThreadScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import BlockedUsersScreen from '../screens/BlockedUsersScreen';
 import CreateBubbleScreen from '../screens/CreateBubbleScreen';
@@ -44,34 +41,9 @@ function AppNavigator() {
         options={{ headerShown: true, title: 'Edit Profile' }}
       />
       <AppStack.Screen
-        name="Discovery"
-        component={DiscoveryScreen}
-        options={{ headerShown: true, title: 'Nearby' }}
-      />
-      <AppStack.Screen
-        name="Signals"
-        component={SignalsScreen}
-        options={{ headerShown: true, title: 'Signals' }}
-      />
-      <AppStack.Screen
-        name="Chats"
+        name="Bubbles"
         component={ChatsScreen}
-        options={{ headerShown: true, title: 'Chats' }}
-      />
-      <AppStack.Screen
-        name="Thread"
-        component={ThreadScreen}
-        options={({ route }) => ({ headerShown: true, title: route.params?.displayName || 'Chat' })}
-      />
-      <AppStack.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{ headerShown: true, title: 'Settings' }}
-      />
-      <AppStack.Screen
-        name="BlockedUsers"
-        component={BlockedUsersScreen}
-        options={{ headerShown: true, title: 'Blocked Users' }}
+        options={{ headerShown: true, title: 'Nearby Bubbles' }}
       />
       <AppStack.Screen
         name="CreateBubble"
@@ -82,6 +54,16 @@ function AppNavigator() {
         name="BubbleChat"
         component={BubbleChatScreen}
         options={{ headerShown: false }}
+      />
+      <AppStack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{ headerShown: true, title: 'Settings' }}
+      />
+      <AppStack.Screen
+        name="BlockedUsers"
+        component={BlockedUsersScreen}
+        options={{ headerShown: true, title: 'Blocked Users' }}
       />
     </AppStack.Navigator>
   );

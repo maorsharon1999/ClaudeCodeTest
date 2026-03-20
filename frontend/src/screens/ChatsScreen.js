@@ -9,26 +9,29 @@ import {
   Animated,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { getThreads } from '../api/chat';
+import { getNearbyBubbles } from '../api/bubbles';
+import * as Location from 'expo-location';
 import { theme } from '../theme';
 
-function relativeTime(isoString) {
-  if (!isoString) return '';
-  const diffMs = Date.now() - new Date(isoString).getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  if (diffSec < 60) return 'just now';
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return diffMin + 'm ago';
-  const diffHr = Math.floor(diffMin / 60);
-  return diffHr + 'h ago';
+const CATEGORY_ICONS = {
+  Social: '🗣', Study: '📚', 'Food & Drinks': '🍕', Sports: '⚽',
+  Music: '🎵', Nightlife: '🌙', Outdoors: '🌿', Gaming: '🎮',
+  Tech: '💻', Art: '🎨', Other: '📍',
+};
+
+function timeRemaining(expiresAt) {
+  const diff = new Date(expiresAt) - new Date();
+  if (diff <= 0) return 'Expired';
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  return h > 0 ? `${h}h ${m}m left` : `${m}m left`;
 }
 
 export default function ChatsScreen({ navigation }) {
-  const [threads, setThreads] = useState([]);
+  const [bubbles, setBubbles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Entrance animation
   const enterAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(enterAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
@@ -38,14 +41,20 @@ export default function ChatsScreen({ navigation }) {
     transform: [{ translateY: enterAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }],
   };
 
-  const loadThreads = useCallback(async () => {
+  const loadBubbles = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getThreads();
-      setThreads(data);
-    } catch (err) {
-      setError('Could not load conversations. Please try again.');
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setError('Location permission required to find nearby bubbles.');
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const result = await getNearbyBubbles(loc.coords.latitude, loc.coords.longitude);
+      setBubbles(result || []);
+    } catch {
+      setError('Could not load bubbles. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -53,46 +62,36 @@ export default function ChatsScreen({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      loadThreads();
-    }, [loadThreads])
+      loadBubbles();
+    }, [loadBubbles])
   );
 
-  function renderThread({ item }) {
-    const other = item.other_user || {};
-    const name = other.display_name || '';
-    const age = other.age ? ', ' + other.age : '';
-    const msgBody = item.last_message?.body || '';
-    // Backend sets body to 'Voice note' string for voice-only messages in preview
-    const isVoiceOnly = msgBody === 'Voice note';
-    const preview = (msgBody && !isVoiceOnly) ? msgBody.slice(0, 60) + (msgBody.length > 60 ? '…' : '') : '';
-    const time = relativeTime(item.last_message?.sent_at);
-
+  function renderBubble({ item }) {
+    const icon = CATEGORY_ICONS[item.category] || '📍';
     return (
       <TouchableOpacity
         style={[styles.card, theme.shadows.card]}
-        onPress={() =>
-          navigation.navigate('Thread', {
-            threadId: item.thread_id,
-            displayName: other.display_name,
-            otherUserId: other.user_id,
-            otherUserPhoto: other.photos?.[0] || null,
-          })
-        }
+        onPress={() => navigation.navigate('BubbleChat', { bubbleId: item.id, bubbleTitle: item.title })}
         accessibilityRole="button"
-        accessibilityLabel={'Open conversation with ' + name}
+        accessibilityLabel={`Open bubble: ${item.title}`}
       >
         <View style={styles.cardTop}>
-          <Text style={styles.cardName}>{name + age}</Text>
-          {time ? <Text style={styles.cardTime}>{time}</Text> : null}
+          <Text style={styles.cardIcon}>{icon}</Text>
+          <View style={styles.cardInfo}>
+            <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+            <View style={styles.cardMeta}>
+              <View style={styles.categoryBadge}>
+                <Text style={styles.categoryBadgeText}>{item.category}</Text>
+              </View>
+              <Text style={styles.cardMetaText}>
+                {item.member_count <= 2 ? 'A few' : item.member_count} people
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.cardTime}>{timeRemaining(item.expires_at)}</Text>
         </View>
-        {preview ? (
-          <Text style={styles.cardPreview} numberOfLines={1} ellipsizeMode="tail">
-            {preview}
-          </Text>
-        ) : isVoiceOnly ? (
-          <Text style={[styles.cardPreview, { color: theme.colors.textMuted }]} numberOfLines={1}>
-            Voice note
-          </Text>
+        {item.description ? (
+          <Text style={styles.cardDesc} numberOfLines={1} ellipsizeMode="tail">{item.description}</Text>
         ) : null}
       </TouchableOpacity>
     );
@@ -101,26 +100,34 @@ export default function ChatsScreen({ navigation }) {
   return (
     <Animated.View style={[styles.container, enterStyle]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Chats</Text>
+        <Text style={styles.headerTitle}>Nearby Bubbles</Text>
       </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      {loading && threads.length === 0 ? (
+      {loading && bubbles.length === 0 ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.colors.brand} />
         </View>
       ) : (
         <FlatList
-          data={threads}
-          keyExtractor={(item) => item.thread_id}
-          contentContainerStyle={threads.length === 0 ? styles.emptyList : styles.list}
-          renderItem={renderThread}
+          data={bubbles}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={bubbles.length === 0 ? styles.emptyList : styles.list}
+          renderItem={renderBubble}
           ListEmptyComponent={
             !loading ? (
-              <Text style={styles.emptyText}>
-                {'No conversations yet.\nApprove a signal to start chatting.'}
-              </Text>
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No bubbles nearby right now.</Text>
+                <Text style={styles.emptySubtext}>Be the first to create one!</Text>
+                <TouchableOpacity
+                  style={styles.createBtn}
+                  onPress={() => navigation.navigate('CreateBubble')}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.createBtnText}>Create a Bubble</Text>
+                </TouchableOpacity>
+              </View>
             ) : null
           }
         />
@@ -142,8 +149,17 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
   list: { padding: 16 },
   emptyList: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  emptyText: { fontSize: 15, color: theme.colors.textFaint, textAlign: 'center', lineHeight: 22 },
-  errorText: { color: '#c00', textAlign: 'center', padding: 12, fontSize: 13 },
+  emptyState: { alignItems: 'center' },
+  emptyText: { fontSize: 16, color: theme.colors.textFaint, textAlign: 'center', marginBottom: 4 },
+  emptySubtext: { fontSize: 14, color: theme.colors.textMuted, textAlign: 'center', marginBottom: 20 },
+  createBtn: {
+    backgroundColor: theme.colors.brand,
+    borderRadius: theme.radii.pill,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+  },
+  createBtnText: { color: '#fff', fontWeight: '600', fontSize: 15 },
+  errorText: { color: theme.colors.error, textAlign: 'center', padding: 12, fontSize: 13 },
   card: {
     backgroundColor: theme.colors.bgBase,
     borderRadius: theme.radii.md,
@@ -152,8 +168,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.borderSubtle,
   },
-  cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cardName: { fontSize: 17, fontWeight: '700', color: theme.colors.textBody },
-  cardTime: { fontSize: 12, color: theme.colors.textFaint },
-  cardPreview: { fontSize: 14, color: '#666', marginTop: 6 },
+  cardTop: { flexDirection: 'row', alignItems: 'center' },
+  cardIcon: { fontSize: 28, marginRight: 12 },
+  cardInfo: { flex: 1 },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: theme.colors.textBody, marginBottom: 4 },
+  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  categoryBadge: {
+    backgroundColor: theme.colors.badgePurpleBg,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  categoryBadgeText: { fontSize: 11, fontWeight: '600', color: theme.colors.brand },
+  cardMetaText: { fontSize: 12, color: theme.colors.textMuted },
+  cardTime: { fontSize: 12, color: theme.colors.textFaint, marginLeft: 8 },
+  cardDesc: { fontSize: 14, color: theme.colors.textSecondary, marginTop: 8 },
 });

@@ -64,7 +64,7 @@ export default function SettingsScreen({ navigation }) {
   function handleDeleteAccount() {
     Alert.alert(
       'Delete Account',
-      'This permanently deletes your profile, chats, and all data. This cannot be undone.',
+      'This permanently deletes your profile and all data. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -92,11 +92,6 @@ export default function SettingsScreen({ navigation }) {
         <Row label="Edit Profile" onPress={() => navigation.navigate('ProfileEdit')} />
         <Divider />
         <Row label="Name" value={displayName || '—'} />
-      </View>
-
-      <SectionHeader title="PRIVACY" />
-      <View style={styles.section}>
-        <Row label="App always opens invisible" value="On" />
       </View>
 
       <SectionHeader title="SAFETY" />

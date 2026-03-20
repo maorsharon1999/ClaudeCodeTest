@@ -11,8 +11,9 @@ const profileRoutes    = require('./routes/profile');
 const visibilityRoutes = require('./routes/visibility');
 const locationRoutes   = require('./routes/location');
 const discoveryRoutes  = require('./routes/discovery');
-const signalRoutes     = require('./routes/signals');
-const threadsRoutes    = require('./routes/threads');
+// Dating-era routes — kept in codebase but no longer mounted (bubble pivot)
+// const signalRoutes     = require('./routes/signals');
+// const threadsRoutes    = require('./routes/threads');
 const blocksRoutes     = require('./routes/blocks');
 const reportsRoutes    = require('./routes/reports');
 const internalRoutes   = require('./routes/internal');
@@ -34,8 +35,9 @@ app.use('/api/v1/profile',    profileRoutes);
 app.use('/api/v1/visibility', visibilityRoutes);
 app.use('/api/v1/location',   locationRoutes);
 app.use('/api/v1/discovery',  discoveryRoutes);
-app.use('/api/v1/signals',    signalRoutes);
-app.use('/api/v1/threads',   threadsRoutes);
+// Signals and threads unmounted — bubble pivot replaces these with bubble group chat
+// app.use('/api/v1/signals',    signalRoutes);
+// app.use('/api/v1/threads',   threadsRoutes);
 app.use('/api/v1/blocks',    blocksRoutes);
 app.use('/api/v1/reports',   reportsRoutes);
 app.use('/internal',         internalRoutes);
