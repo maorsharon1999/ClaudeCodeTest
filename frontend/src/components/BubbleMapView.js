@@ -11,7 +11,7 @@ import {
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { theme } from '../theme';
-import { getNearbyBubbles } from '../api/bubbles';
+import { getNearbyBubbles, joinBubble } from '../api/bubbles';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const POLL_INTERVAL = 15000;
@@ -91,7 +91,6 @@ export default function BubbleMapView({ navigation }) {
     if (!selectedBubble || joining) return;
     setJoining(true);
     try {
-      const { joinBubble } = require('../api/bubbles');
       await joinBubble(selectedBubble.id);
       dismissCard();
       navigation.navigate('BubbleChat', {
