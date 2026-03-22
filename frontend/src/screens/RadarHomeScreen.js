@@ -60,31 +60,29 @@ export default function RadarHomeScreen({ navigation }) {
   const pollRef = useRef(null);
 
   useEffect(() => {
-    (async () => {
+    const fallback = { latitude: 32.08, longitude: 34.78 }; // Tel Aviv default
+
+    async function resolveLocation() {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        // Fallback: use a default region so the app isn't stuck
-        const fallback = { latitude: 32.08, longitude: 34.78 }; // Tel Aviv default
         setMyLocation(fallback);
         return;
       }
-      try {
-        let loc = await Location.getLastKnownPositionAsync();
-        if (!loc) {
-          loc = await Promise.race([
-            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000)),
-          ]);
-        }
-        const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-        setMyLocation(coords);
-        fetchBubbles(coords.latitude, coords.longitude);
-      } catch {
-        // Timeout or error — use fallback so the app renders
-        const fallback = { latitude: 32.08, longitude: 34.78 };
-        setMyLocation(fallback);
-      }
-    })();
+      // Wrap entire location sequence in an 8s timeout so nothing can hang forever
+      const loc = await Promise.race([
+        (async () => {
+          const last = await Location.getLastKnownPositionAsync();
+          if (last) return last;
+          return Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+        })(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+      ]);
+      const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+      setMyLocation(coords);
+      fetchBubbles(coords.latitude, coords.longitude);
+    }
+
+    resolveLocation().catch(() => setMyLocation(fallback));
   }, []);
 
   useEffect(() => {
