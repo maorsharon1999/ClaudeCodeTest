@@ -253,7 +253,8 @@ export default function RadarHomeScreen({ navigation }) {
 
         {/* Bubble center markers */}
         {filteredBubbles.map((b) => {
-          const hasShape = b.shape_type && b.shape_type !== 'circle' && b.shape_coords;
+          const coords = b.shape_coords && (Array.isArray(b.shape_coords) ? b.shape_coords : (() => { try { return JSON.parse(b.shape_coords); } catch { return null; } })());
+          const hasShape = b.shape_type && b.shape_type !== 'circle' && coords && coords.length > 0;
           return (
             <Marker
               key={b.id}

@@ -38,13 +38,24 @@ function jitterBubbleCoords(bubbleId, lat, lng) {
   return { lat: lat + dLat, lng: lng + dLng };
 }
 
+// Ensure shape_coords is a parsed array (pg may return JSONB as string)
+function parseShapeCoords(raw) {
+  if (!raw) return null;
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    try { return JSON.parse(raw); } catch { return null; }
+  }
+  return null;
+}
+
 // Shift shape_coords vertices by the same jitter delta as the center point
 function jitterShapeCoords(bubbleId, centerLat, centerLng, shapeCoords) {
-  if (!shapeCoords || !Array.isArray(shapeCoords)) return null;
+  const parsed = parseShapeCoords(shapeCoords);
+  if (!parsed || !Array.isArray(parsed)) return null;
   const jittered = jitterBubbleCoords(bubbleId, centerLat, centerLng);
   const dLat = jittered.lat - centerLat;
   const dLng = jittered.lng - centerLng;
-  return shapeCoords.map(pt => ({ lat: pt.lat + dLat, lng: pt.lng + dLng }));
+  return parsed.map(pt => ({ lat: pt.lat + dLat, lng: pt.lng + dLng }));
 }
 
 // Compute centroid of a set of {lat,lng} points
