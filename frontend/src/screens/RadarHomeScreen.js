@@ -8,17 +8,25 @@ import {
   Dimensions,
   Platform,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { getNearbyBubbles, joinBubble } from '../api/bubbles';
+import { setVisibility } from '../api/profile';
 import BubbleMapMarker from '../components/BubbleMapMarker';
 import BubblePeekCard from '../components/BubblePeekCard';
 import mapDarkStyle from '../components/MapDarkStyle.json';
 import { IconButton } from '../components/ui';
 import { pulseLoop } from '../utils/animations';
+import { CATEGORY_ICONS } from '../constants/icons';
 import { theme } from '../theme';
+
+const ALL_CATEGORIES = [
+  'Social', 'Study', 'Food & Drinks', 'Sports', 'Music',
+  'Nightlife', 'Outdoors', 'Gaming', 'Tech', 'Art', 'Other',
+];
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const POLL_INTERVAL = 15000;
@@ -28,6 +36,24 @@ export default function RadarHomeScreen({ navigation }) {
   const [selectedBubble, setSelectedBubble] = useState(null);
   const [myLocation, setMyLocation] = useState(null);
   const [joining, setJoining] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const [filterCat, setFilterCat] = useState(null);
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
+  async function handleVisibilityToggle() {
+    const next = !isVisible;
+    setIsVisible(next);
+    try {
+      await setVisibility(next ? 'visible' : 'invisible');
+    } catch {
+      // revert on failure
+      setIsVisible(!next);
+    }
+  }
+
+  const filteredBubbles = filterCat ? bubbles.filter((b) => b.category === filterCat) : bubbles;
   const cardAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
   const mapRef = useRef(null);
@@ -172,7 +198,7 @@ export default function RadarHomeScreen({ navigation }) {
           />
         </Marker>
 
-        {bubbles.map((b) => (
+        {filteredBubbles.map((b) => (
           <Marker
             key={b.id}
             coordinate={{
@@ -193,8 +219,19 @@ export default function RadarHomeScreen({ navigation }) {
 
       {/* Top bar overlay */}
       <View style={styles.topBar} pointerEvents="box-none">
-        <Text style={styles.wordmark}>Bubble</Text>
+        <View>
+          <Text style={styles.wordmark}>Bubble</Text>
+          <Text style={styles.greeting}>{greeting}</Text>
+        </View>
         <View style={styles.topActions}>
+          <IconButton
+            name={isVisible ? 'eye-outline' : 'eye-off-outline'}
+            size={20}
+            color={isVisible ? theme.colors.brand : theme.colors.textMuted}
+            onPress={handleVisibilityToggle}
+            bgColor={theme.colors.bgSurface}
+            buttonSize={38}
+          />
           <IconButton
             name="notifications-outline"
             size={20}
@@ -204,6 +241,37 @@ export default function RadarHomeScreen({ navigation }) {
             buttonSize={38}
           />
         </View>
+      </View>
+
+      {/* Filter chip row */}
+      <View style={styles.chipRowContainer} pointerEvents="box-none">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipRowContent}
+          pointerEvents="auto"
+        >
+          {ALL_CATEGORIES.map((cat) => {
+            const iconName = CATEGORY_ICONS[cat] || CATEGORY_ICONS.Other;
+            const active = filterCat === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.filterChip, active && styles.filterChipActive]}
+                onPress={() => setFilterCat(active ? null : cat)}
+              >
+                <Ionicons
+                  name={iconName}
+                  size={13}
+                  color={active ? theme.colors.brand : theme.colors.textMuted}
+                />
+                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* Bottom controls */}
@@ -300,5 +368,43 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: theme.colors.brand,
     backgroundColor: 'transparent',
+  },
+  greeting: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  chipRowContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 110 : 78,
+    left: 0,
+    right: 0,
+  },
+  chipRowContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 11,
+    borderRadius: theme.radii.pill,
+    borderWidth: 1,
+    borderColor: theme.colors.borderDefault,
+    backgroundColor: 'rgba(10,10,20,0.82)',
+  },
+  filterChipActive: {
+    borderColor: theme.colors.brand,
+    backgroundColor: theme.colors.brandMuted,
+  },
+  filterChipText: {
+    fontSize: 12,
+    color: theme.colors.textMuted,
+  },
+  filterChipTextActive: {
+    color: theme.colors.brand,
+    fontWeight: '600',
   },
 });

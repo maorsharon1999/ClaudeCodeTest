@@ -1,43 +1,71 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
+  Animated,
+  Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { theme } from '../theme';
+import { pulseLoop } from '../utils/animations';
 
 const MAX_DURATION_S = 60;
 
 function formatDuration(seconds) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return m + ':' + String(s).padStart(2, '0');
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-export default function VoiceNoteRecorder({ onSend, onCancel }) {
+export default function VoiceNoteRecorder({ onSend, onCancel, visible }) {
+  const [recording, setRecording] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const recordingRef = useRef(null);
+  const [error, setError] = useState('');
   const timerRef = useRef(null);
-  const startTimeRef = useRef(null);
-  const didFinishRef = useRef(false);
+  const pulseAnim = useRef(new Animated.Value(0.4)).current;
+  const pulseRef = useRef(null);
 
   useEffect(() => {
-    startRecording();
+    if (!visible) {
+      // Clean up if hidden mid-recording
+      stopAndDiscard();
+    }
+  }, [visible]);
+
+  useEffect(() => {
     return () => {
+      stopAndDiscard();
       clearInterval(timerRef.current);
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch(() => {});
-      }
     };
   }, []);
 
+  async function stopAndDiscard() {
+    if (recording) {
+      try {
+        await recording.stopAndUnloadAsync();
+      } catch {
+        // ignore
+      }
+      setRecording(null);
+    }
+    setIsRecording(false);
+    setElapsed(0);
+    clearInterval(timerRef.current);
+    if (pulseRef.current) {
+      pulseRef.current.stop();
+    }
+  }
+
   async function startRecording() {
+    setError('');
     try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        onCancel();
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        setError('Microphone permission denied');
         return;
       }
 
@@ -46,95 +74,92 @@ export default function VoiceNoteRecorder({ onSend, onCancel }) {
         playsInSilentModeIOS: true,
       });
 
-      const { recording } = await Audio.Recording.createAsync(
+      const { recording: rec } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
+      setRecording(rec);
+      setIsRecording(true);
+      setElapsed(0);
 
-      recordingRef.current = recording;
-      startTimeRef.current = Date.now();
+      // Start pulse animation
+      pulseRef.current = pulseLoop(pulseAnim, { minOpacity: 0.3, maxOpacity: 1, duration: 600 });
+      pulseRef.current.start();
 
+      // Timer
       timerRef.current = setInterval(() => {
-        const s = Math.floor((Date.now() - startTimeRef.current) / 1000);
-        setElapsed(s);
-        if (s >= MAX_DURATION_S) {
-          clearInterval(timerRef.current);
-          stopAndSend(s);
-        }
-      }, 500);
-    } catch {
-      onCancel();
+        setElapsed((prev) => {
+          if (prev + 1 >= MAX_DURATION_S) {
+            finishRecording(rec, MAX_DURATION_S);
+            return MAX_DURATION_S;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    } catch (e) {
+      setError('Could not start recording');
     }
   }
 
-  async function stopAndSend(overrideDuration) {
-    if (didFinishRef.current) return;
-    didFinishRef.current = true;
+  async function finishRecording(rec, durationS) {
     clearInterval(timerRef.current);
-
-    const rec = recordingRef.current;
-    if (!rec) {
-      onCancel();
-      return;
-    }
+    if (pulseRef.current) pulseRef.current.stop();
 
     try {
       await rec.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
       const uri = rec.getURI();
-      const elapsedMs = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
-      const durationS =
-        overrideDuration !== undefined
-          ? overrideDuration
-          : Math.max(1, Math.round(elapsedMs / 1000));
-      if (!uri || elapsedMs < 500) {
-        onCancel();
-        return;
-      }
-      onSend({ uri, durationS });
+      setRecording(null);
+      setIsRecording(false);
+      setElapsed(0);
+      onSend && onSend({ uri, durationS: durationS || elapsed });
     } catch {
-      onCancel();
+      setError('Recording failed');
     }
+  }
+
+  async function handleStopSend() {
+    if (!recording) return;
+    await finishRecording(recording, elapsed);
   }
 
   async function handleCancel() {
-    if (didFinishRef.current) return;
-    didFinishRef.current = true;
-    clearInterval(timerRef.current);
-
-    const rec = recordingRef.current;
-    if (rec) {
-      try {
-        await rec.stopAndUnloadAsync();
-      } catch {
-        // discard silently
-      }
-    }
-    onCancel();
+    await stopAndDiscard();
+    onCancel && onCancel();
   }
+
+  if (!visible) return null;
 
   return (
     <View style={styles.container}>
-      <View style={styles.recordingIndicator}>
-        <View style={styles.redDot} />
-        <Text style={styles.timerText}>{formatDuration(elapsed)}</Text>
+      <TouchableOpacity onPress={handleCancel} style={styles.cancelBtn}>
+        <Ionicons name="close-circle" size={28} color={theme.colors.textMuted} />
+      </TouchableOpacity>
+
+      <View style={styles.center}>
+        {isRecording ? (
+          <>
+            <Animated.View style={[styles.recDot, { opacity: pulseAnim }]} />
+            <Text style={styles.duration}>{formatDuration(elapsed)}</Text>
+            <Text style={styles.hint}>Recording...</Text>
+          </>
+        ) : (
+          <Text style={styles.hint}>Tap mic to record</Text>
+        )}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.btn, styles.cancelBtn]}
-          onPress={handleCancel}
-          accessibilityRole="button"
-          accessibilityLabel="Cancel voice note"
-        >
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.btn, styles.sendBtn]}
-          onPress={() => stopAndSend()}
-          accessibilityRole="button"
-          accessibilityLabel="Send voice note"
-        >
-          <Text style={styles.sendText}>Send</Text>
-        </TouchableOpacity>
-      </View>
+
+      <TouchableOpacity
+        onPress={isRecording ? handleStopSend : startRecording}
+        style={[styles.micBtn, isRecording && styles.micBtnRecording]}
+        accessibilityRole="button"
+        accessibilityLabel={isRecording ? 'Stop and send voice note' : 'Start recording'}
+      >
+        <Ionicons
+          name={isRecording ? 'stop' : 'mic'}
+          size={26}
+          color={isRecording ? '#fff' : theme.colors.brand}
+        />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -143,56 +168,55 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.bgSurface,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.borderSubtle,
-    backgroundColor: theme.colors.bgBase,
+    borderTopColor: theme.colors.borderDefault,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+    gap: 12,
   },
-  recordingIndicator: {
+  cancelBtn: {
+    padding: 4,
+  },
+  center: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    gap: 10,
   },
-  redDot: {
+  recDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
     backgroundColor: theme.colors.error,
-    marginRight: theme.spacing.sm,
   },
-  timerText: {
+  duration: {
     fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.textBody,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    minWidth: 36,
   },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
+  hint: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
   },
-  btn: {
-    borderRadius: theme.radii.pill,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
+  error: {
+    fontSize: 13,
+    color: theme.colors.error,
+  },
+  micBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.brandMuted,
+    borderWidth: 1,
+    borderColor: theme.colors.brand,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  cancelBtn: {
-    backgroundColor: theme.colors.bgDim,
-  },
-  sendBtn: {
-    backgroundColor: theme.colors.brand,
-  },
-  cancelText: {
-    color: theme.colors.textSecondary,
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  sendText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
+  micBtnRecording: {
+    backgroundColor: theme.colors.error,
+    borderColor: theme.colors.error,
   },
 });

@@ -13,6 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { getNearbyBubbles } from '../api/bubbles';
+import { getProfile } from '../api/profile';
 import { CATEGORY_ICONS } from '../constants/icons';
 import { timeRemaining, formatDistance } from '../utils/timeFormatters';
 import { Card, EmptyState } from '../components/ui';
@@ -33,6 +34,7 @@ export default function ExploreScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterCat, setFilterCat] = useState(null);
+  const [profile, setProfile] = useState(null);
 
   const enterAnim = useRef(new Animated.Value(0)).current;
   // One anim value per card slot — reused across renders

@@ -31,7 +31,7 @@ export default function WelcomeScreen({ navigation }) {
       <View style={styles.footer}>
         <Button
           title="Get Started"
-          onPress={() => navigation.navigate('ProfileBasics')}
+          onPress={() => navigation.navigate('IntroCarousel')}
           size="lg"
         />
         <View style={styles.progress}>

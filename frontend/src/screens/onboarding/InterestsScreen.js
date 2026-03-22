@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CATEGORY_ICONS } from '../../constants/icons';
 import { Chip, Button } from '../../components/ui';
@@ -10,9 +10,14 @@ const INTEREST_OPTIONS = [
   'Nightlife', 'Outdoors', 'Gaming', 'Tech', 'Art',
 ];
 
+const VIBE_OPTIONS = ['Chill', 'Adventurous', 'Intellectual', 'Party', 'Creative'];
+const INTENT_OPTIONS = ['Friends', 'Dating', 'Networking', 'Open to anything'];
+
 export default function InterestsScreen({ route, navigation }) {
   const params = route.params || {};
   const [interests, setInterests] = useState([]);
+  const [vibes, setVibes] = useState([]);
+  const [intent, setIntent] = useState('');
 
   function toggleInterest(tag) {
     setInterests((prev) =>
@@ -24,13 +29,27 @@ export default function InterestsScreen({ route, navigation }) {
     );
   }
 
+  function toggleVibe(vibe) {
+    setVibes((prev) =>
+      prev.includes(vibe)
+        ? prev.filter((v) => v !== vibe)
+        : prev.length < 5
+        ? [...prev, vibe]
+        : prev
+    );
+  }
+
   function handleNext() {
-    navigation.navigate('LocationPermission', { ...params, interests });
+    navigation.navigate('DiscoveryPreferences', { ...params, interests, vibes, intent });
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.step}>Step 3 of 5</Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Text style={styles.step}>Step 4 of 7</Text>
       <Text style={styles.title}>What are you into?</Text>
       <Text style={styles.subtitle}>Pick your interests so we can show you relevant bubbles.</Text>
 
@@ -50,34 +69,69 @@ export default function InterestsScreen({ route, navigation }) {
         })}
       </View>
 
+      <Text style={styles.sectionLabel}>Vibes</Text>
+      <Text style={styles.sectionHint}>How would you describe your energy?</Text>
+      <View style={styles.chipGrid}>
+        {VIBE_OPTIONS.map((vibe) => (
+          <Chip
+            key={vibe}
+            label={vibe}
+            selected={vibes.includes(vibe)}
+            onPress={() => toggleVibe(vibe)}
+            style={styles.chip}
+          />
+        ))}
+      </View>
+
+      <Text style={styles.sectionLabel}>What are you looking for?</Text>
+      <View style={styles.chipGrid}>
+        {INTENT_OPTIONS.map((opt) => (
+          <Chip
+            key={opt}
+            label={opt}
+            selected={intent === opt}
+            onPress={() => setIntent(intent === opt ? '' : opt)}
+            style={styles.chip}
+          />
+        ))}
+      </View>
+
       <View style={styles.footer}>
         <Button title="Continue" onPress={handleNext} size="lg" />
         <TouchableOpacity style={styles.skipBtn} onPress={handleNext}>
           <Text style={styles.skipText}>Skip for now</Text>
         </TouchableOpacity>
         <View style={styles.progress}>
-          {[0,1,2,3,4,5].map((i) => (
-            <View key={i} style={[styles.dot, i === 3 && styles.dotActive]} />
+          {[0,1,2,3,4,5,6].map((i) => (
+            <View key={i} style={[styles.dot, i === 4 && styles.dotActive]} />
           ))}
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.bgDeep,
+  container: { flex: 1, backgroundColor: theme.colors.bgDeep },
+  content: {
     padding: 24,
     paddingTop: Platform.OS === 'ios' ? 64 : 32,
+    paddingBottom: 48,
   },
   step: { fontSize: 13, color: theme.colors.brand, fontWeight: '600', marginBottom: 8 },
   title: { ...theme.typography.titleMd, color: theme.colors.textPrimary, marginBottom: 8 },
   subtitle: { fontSize: 15, color: theme.colors.textSecondary, marginBottom: 24 },
-  chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, flex: 1 },
+  sectionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    marginTop: 28,
+    marginBottom: 6,
+  },
+  sectionHint: { fontSize: 13, color: theme.colors.textMuted, marginBottom: 12 },
+  chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { marginBottom: 4 },
-  footer: { paddingBottom: 32 },
+  footer: { paddingBottom: 32, marginTop: 32 },
   skipBtn: { alignItems: 'center', paddingVertical: 14 },
   skipText: { fontSize: 15, color: theme.colors.textMuted },
   progress: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 8 },

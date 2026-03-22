@@ -15,6 +15,7 @@ import { CATEGORY_ICONS } from '../constants/icons';
 import { timeRemaining, formatDistance } from '../utils/timeFormatters';
 import { fadeInUp, fadeInUpStyle } from '../utils/animations';
 import { Avatar, Header, Button, ErrorState } from '../components/ui';
+import SignalModal from '../components/SignalModal';
 import { resolvePhotoUrl } from '../lib/photoUrl';
 import { theme } from '../theme';
 
@@ -25,6 +26,7 @@ export default function BubbleDetailsScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState(null);
+  const [signalUser, setSignalUser] = useState(null);
 
   const enterAnim = useRef(new Animated.Value(0)).current;
 
@@ -147,24 +149,42 @@ export default function BubbleDetailsScreen({ route, navigation }) {
           {members.length > 0 && (
             <View style={styles.membersSection}>
               <Text style={styles.sectionTitle}>Members</Text>
-              <View style={styles.avatarRow}>
-                {members.slice(0, 8).map((m) => (
+              {members.slice(0, 8).map((m) => (
+                <TouchableOpacity
+                  key={m.user_id}
+                  style={styles.memberRow}
+                  onPress={() => setSignalUser({
+                    id: m.user_id,
+                    display_name: m.display_name,
+                    photos: m.photos,
+                  })}
+                >
                   <Avatar
-                    key={m.user_id}
                     uri={m.photos?.[0] ? resolvePhotoUrl(m.photos[0]) : null}
                     name={m.display_name}
                     size={40}
                     style={styles.memberAvatar}
                   />
-                ))}
-                {members.length > 8 && (
-                  <View style={styles.moreMembers}>
-                    <Text style={styles.moreMembersText}>+{members.length - 8}</Text>
+                  <Text style={styles.memberName}>{m.display_name || 'Someone'}</Text>
+                  <View style={styles.signalIcon}>
+                    <Ionicons name="flash-outline" size={16} color={theme.colors.brand} />
                   </View>
-                )}
-              </View>
+                </TouchableOpacity>
+              ))}
+              {members.length > 8 && (
+                <View style={styles.moreMembers}>
+                  <Text style={styles.moreMembersText}>+{members.length - 8} more</Text>
+                </View>
+              )}
             </View>
           )}
+
+          <SignalModal
+            visible={!!signalUser}
+            user={signalUser}
+            onClose={() => setSignalUser(null)}
+            onSuccess={() => setSignalUser(null)}
+          />
 
           {/* Actions */}
           <View style={styles.actions}>
@@ -256,17 +276,31 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginBottom: 12,
   },
-  avatarRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  memberAvatar: { marginBottom: 4 },
-  moreMembers: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.bgElevated,
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  memberAvatar: { marginRight: 12 },
+  memberName: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+    color: theme.colors.textBody,
+  },
+  signalIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.brandMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  moreMembersText: { fontSize: 12, fontWeight: '600', color: theme.colors.textMuted },
+  moreMembers: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  moreMembersText: { fontSize: 13, color: theme.colors.textMuted },
   actions: { marginTop: 8 },
   joinBtn: { marginBottom: 16 },
   expiredBanner: {
