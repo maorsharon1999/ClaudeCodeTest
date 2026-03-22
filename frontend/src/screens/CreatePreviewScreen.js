@@ -6,9 +6,12 @@ import {
   Animated,
   StyleSheet,
 } from 'react-native';
+import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { CATEGORY_ICONS } from '../constants/icons';
 import { Card, Button, Header } from '../components/ui';
+import BubbleAreaOverlay from '../components/BubbleAreaOverlay';
+import mapDarkStyle from '../components/MapDarkStyle.json';
 import { createBubble } from '../api/bubbles';
 import { theme } from '../theme';
 import { fadeInUp, fadeInUpStyle } from '../utils/animations';
@@ -29,7 +32,8 @@ function DetailRow({ label, value }) {
 }
 
 export default function CreatePreviewScreen({ navigation, route }) {
-  const { category, title, description, durationH, location, visibility } = route.params;
+  const { category, title, description, durationH, location, visibility,
+    shape_type, radius_m, shape_coords, center } = route.params;
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -50,8 +54,11 @@ export default function CreatePreviewScreen({ navigation, route }) {
         category,
         description: description || undefined,
         duration_h: durationH,
-        lat: location ? location.lat : undefined,
-        lng: location ? location.lng : undefined,
+        lat: center?.lat || (location ? location.lat : undefined),
+        lng: center?.lng || (location ? location.lng : undefined),
+        shape_type: shape_type || 'circle',
+        radius_m: radius_m || 200,
+        shape_coords: shape_coords || undefined,
       });
       navigation.navigate('RadarStack', {
         screen: 'BubbleChat',
@@ -69,7 +76,7 @@ export default function CreatePreviewScreen({ navigation, route }) {
     <Animated.View style={[styles.flex, fadeInUpStyle(enterAnim)]}>
       <Header
         title="Preview"
-        subtitle="Step 4 of 4"
+        subtitle="Step 5 of 5"
         onBack={() => navigation.goBack()}
       />
       <ScrollView
@@ -114,6 +121,50 @@ export default function CreatePreviewScreen({ navigation, route }) {
             label="Location"
             value={location ? 'Near your location' : 'Location unavailable'}
           />
+          <View style={styles.rowDivider} />
+
+          <DetailRow
+            label="Area"
+            value={
+              shape_type === 'polygon'
+                ? 'Custom polygon'
+                : shape_type === 'rectangle'
+                ? 'Custom rectangle'
+                : `Circle, ~${radius_m || 200}m radius`
+            }
+          />
+
+          {/* Mini-map preview */}
+          {(center || location) && (
+            <View style={styles.miniMapContainer}>
+              <MapView
+                provider={PROVIDER_GOOGLE}
+                style={styles.miniMap}
+                customMapStyle={mapDarkStyle}
+                scrollEnabled={false}
+                zoomEnabled={false}
+                rotateEnabled={false}
+                pitchEnabled={false}
+                initialRegion={{
+                  latitude: center?.lat || location?.lat || 32.08,
+                  longitude: center?.lng || location?.lng || 34.78,
+                  latitudeDelta: 0.008,
+                  longitudeDelta: 0.008,
+                }}
+              >
+                <BubbleAreaOverlay
+                  bubble={{
+                    lat: center?.lat || location?.lat || 32.08,
+                    lng: center?.lng || location?.lng || 34.78,
+                    shape_type: shape_type || 'circle',
+                    radius_m: radius_m || 200,
+                    shape_coords: shape_coords || null,
+                  }}
+                  selected
+                />
+              </MapView>
+            </View>
+          )}
         </Card>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -206,6 +257,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: theme.spacing.md,
     textAlign: 'center',
+  },
+  miniMapContainer: {
+    marginTop: theme.spacing.md,
+    borderRadius: theme.radii.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.borderDefault,
+  },
+  miniMap: {
+    height: 140,
+    width: '100%',
   },
   createBtn: { marginTop: 8 },
 });

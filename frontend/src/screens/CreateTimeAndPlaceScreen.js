@@ -59,7 +59,7 @@ export default function CreateTimeAndPlaceScreen({ navigation, route }) {
       return;
     }
     setTitleError('');
-    navigation.navigate('CreateVisibility', {
+    navigation.navigate('CreateArea', {
       category,
       title: title.trim(),
       description: description.trim(),
@@ -74,7 +74,7 @@ export default function CreateTimeAndPlaceScreen({ navigation, route }) {
     <Animated.View style={[styles.flex, fadeInUpStyle(enterAnim)]}>
       <Header
         title="Details"
-        subtitle="Step 2 of 4"
+        subtitle="Step 2 of 5"
         onBack={() => navigation.goBack()}
       />
       <ScrollView

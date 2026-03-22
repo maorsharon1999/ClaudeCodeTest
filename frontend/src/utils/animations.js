@@ -63,6 +63,13 @@ export function staggeredEntrance(animValues, { staggerDelay = 60, duration = 30
   );
 }
 
+export function springPop(animValue, { toValue = 1.1, speed = 25, bounciness = 8 } = {}) {
+  return Animated.sequence([
+    Animated.spring(animValue, { toValue, useNativeDriver: true, speed, bounciness }),
+    Animated.spring(animValue, { toValue: 1, useNativeDriver: true, speed, bounciness }),
+  ]);
+}
+
 export function breathingScale(animValue, { minScale = 0.95, maxScale = 1.05, duration = 2000 } = {}) {
   return Animated.loop(
     Animated.sequence([

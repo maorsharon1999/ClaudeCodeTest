@@ -11,6 +11,9 @@ const VALID_CATEGORIES = [
 const MAX_MEMBERS = 30;
 const MAX_MESSAGES = 50;
 const DISCOVERY_RADIUS_M = 5000;
+const VALID_SHAPE_TYPES = ['circle', 'polygon', 'rectangle'];
+const MIN_RADIUS_M = 50;
+const MAX_RADIUS_M = 2000;
 
 // Deterministic jitter for bubble coordinates.
 // Uses bubble id + 10-min time bucket so the pin drifts slowly
@@ -35,10 +38,105 @@ function jitterBubbleCoords(bubbleId, lat, lng) {
   return { lat: lat + dLat, lng: lng + dLng };
 }
 
+// Shift shape_coords vertices by the same jitter delta as the center point
+function jitterShapeCoords(bubbleId, centerLat, centerLng, shapeCoords) {
+  if (!shapeCoords || !Array.isArray(shapeCoords)) return null;
+  const jittered = jitterBubbleCoords(bubbleId, centerLat, centerLng);
+  const dLat = jittered.lat - centerLat;
+  const dLng = jittered.lng - centerLng;
+  return shapeCoords.map(pt => ({ lat: pt.lat + dLat, lng: pt.lng + dLng }));
+}
+
+// Compute centroid of a set of {lat,lng} points
+function computeCentroid(coords) {
+  const n = coords.length;
+  const sum = coords.reduce((acc, c) => ({ lat: acc.lat + c.lat, lng: acc.lng + c.lng }), { lat: 0, lng: 0 });
+  return { lat: sum.lat / n, lng: sum.lng / n };
+}
+
+// Haversine distance between two points in meters
+function haversineM(lat1, lng1, lat2, lng2) {
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Validate and normalize shape fields, returns { shape_type, radius_m, shape_coords, lat, lng }
+function validateShape({ shape_type, radius_m, shape_coords, lat, lng }) {
+  const st = shape_type || 'circle';
+  if (!VALID_SHAPE_TYPES.includes(st)) {
+    throw makeError(400, 'VALIDATION_ERROR',
+      `shape_type must be one of: ${VALID_SHAPE_TYPES.join(', ')}.`);
+  }
+
+  if (st === 'circle') {
+    const r = radius_m != null ? Number(radius_m) : 200;
+    if (isNaN(r) || r < MIN_RADIUS_M || r > MAX_RADIUS_M) {
+      throw makeError(400, 'VALIDATION_ERROR',
+        `radius_m must be between ${MIN_RADIUS_M} and ${MAX_RADIUS_M}.`);
+    }
+    return { shape_type: st, radius_m: r, shape_coords: null, lat, lng };
+  }
+
+  if (!Array.isArray(shape_coords) || shape_coords.length === 0) {
+    throw makeError(400, 'VALIDATION_ERROR', 'shape_coords is required for non-circle shapes.');
+  }
+
+  // Validate all coordinate entries
+  for (const pt of shape_coords) {
+    if (pt.lat == null || pt.lng == null || isNaN(Number(pt.lat)) || isNaN(Number(pt.lng))) {
+      throw makeError(400, 'VALIDATION_ERROR', 'Each shape_coords entry must have numeric lat and lng.');
+    }
+  }
+
+  const normalizedCoords = shape_coords.map(pt => ({ lat: Number(pt.lat), lng: Number(pt.lng) }));
+
+  if (st === 'polygon') {
+    if (normalizedCoords.length < 3 || normalizedCoords.length > 20) {
+      throw makeError(400, 'VALIDATION_ERROR', 'Polygon must have 3-20 vertices.');
+    }
+    const centroid = computeCentroid(normalizedCoords);
+    const maxDist = Math.max(...normalizedCoords.map(pt => haversineM(centroid.lat, centroid.lng, pt.lat, pt.lng)));
+    if (maxDist > MAX_RADIUS_M) {
+      throw makeError(400, 'VALIDATION_ERROR', `Polygon bounding radius exceeds ${MAX_RADIUS_M}m.`);
+    }
+    return {
+      shape_type: st,
+      radius_m: Math.round(maxDist),
+      shape_coords: normalizedCoords,
+      lat: centroid.lat,
+      lng: centroid.lng,
+    };
+  }
+
+  // rectangle: exactly 2 corners
+  if (normalizedCoords.length !== 2) {
+    throw makeError(400, 'VALIDATION_ERROR', 'Rectangle requires exactly 2 corner coordinates.');
+  }
+  const [c1, c2] = normalizedCoords;
+  const midLat = (c1.lat + c2.lat) / 2;
+  const midLng = (c1.lng + c2.lng) / 2;
+  const cornerDist = haversineM(midLat, midLng, c1.lat, c1.lng);
+  if (cornerDist > MAX_RADIUS_M) {
+    throw makeError(400, 'VALIDATION_ERROR', `Rectangle bounding radius exceeds ${MAX_RADIUS_M}m.`);
+  }
+  return {
+    shape_type: st,
+    radius_m: Math.round(cornerDist),
+    shape_coords: normalizedCoords,
+    lat: midLat,
+    lng: midLng,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // createBubble
 // ---------------------------------------------------------------------------
-async function createBubble(userId, { title, description, category, lat, lng, duration_h }) {
+async function createBubble(userId, { title, description, category, lat, lng, duration_h, shape_type, radius_m, shape_coords }) {
   // --- validation ---
   if (!title || typeof title !== 'string' || !title.trim()) {
     throw makeError(400, 'VALIDATION_ERROR', 'title is required.');
@@ -79,13 +177,28 @@ async function createBubble(userId, { title, description, category, lat, lng, du
     throw makeError(429, 'RATE_LIMIT', 'You may create at most 5 bubbles per 24 hours.');
   }
 
+  // --- validate shape ---
+  const shape = validateShape({
+    shape_type,
+    radius_m,
+    shape_coords,
+    lat: latNum,
+    lng: lngNum,
+  });
+  // For polygon/rectangle the centroid overrides the provided lat/lng
+  const finalLat = shape.lat;
+  const finalLng = shape.lng;
+
   // --- insert bubble ---
   const { rows } = await pool.query(
     `INSERT INTO bubbles
-       (creator_id, title, description, category, lat, lng, duration_h, expires_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW() + make_interval(hours => $8))
+       (creator_id, title, description, category, lat, lng, duration_h, expires_at,
+        shape_type, radius_m, shape_coords)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW() + make_interval(hours => $8),
+             $9, $10, $11)
      RETURNING *`,
-    [userId, title.trim(), description?.trim() || null, category, latNum, lngNum, durationH, durationH]
+    [userId, title.trim(), description?.trim() || null, category, finalLat, finalLng, durationH, durationH,
+     shape.shape_type, shape.radius_m, shape.shape_coords ? JSON.stringify(shape.shape_coords) : null]
   );
   const bubble = rows[0];
 
@@ -151,6 +264,9 @@ async function getNearbyBubbles(userId, lat, lng) {
        b.category,
        b.lat,
        b.lng,
+       b.shape_type,
+       b.radius_m,
+       b.shape_coords,
        b.created_at,
        b.expires_at,
        p.display_name AS creator_display_name,
@@ -172,11 +288,11 @@ async function getNearbyBubbles(userId, lat, lng) {
          UNION
          SELECT blocker_id FROM blocks WHERE blocked_id = $1
        )
-       AND 6371000 * acos(LEAST(1.0,
+       AND (6371000 * acos(LEAST(1.0,
              cos(radians($2)) * cos(radians(b.lat))
                * cos(radians(b.lng) - radians($3))
              + sin(radians($2)) * sin(radians(b.lat))
-           )) <= $4
+           )) - COALESCE(b.radius_m, 200)) <= $4
      ORDER BY
        (
          6371000 * acos(LEAST(1.0,
@@ -194,12 +310,14 @@ async function getNearbyBubbles(userId, lat, lng) {
   );
 
   return rows.map(row => {
-    const { lat: rawLat, lng: rawLng, ...rest } = row;
+    const { lat: rawLat, lng: rawLng, shape_coords: rawCoords, ...rest } = row;
     const jittered = jitterBubbleCoords(row.id, rawLat, rawLng);
+    const jitteredCoords = jitterShapeCoords(row.id, rawLat, rawLng, rawCoords);
     return {
       ...rest,
       lat: jittered.lat,
       lng: jittered.lng,
+      shape_coords: jitteredCoords,
       distance_m: Math.round(row.distance_m),
     };
   });

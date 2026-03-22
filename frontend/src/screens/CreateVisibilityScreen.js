@@ -51,7 +51,7 @@ export default function CreateVisibilityScreen({ navigation, route }) {
     <Animated.View style={[styles.flex, fadeInUpStyle(enterAnim)]}>
       <Header
         title="Visibility"
-        subtitle="Step 3 of 4"
+        subtitle="Step 4 of 5"
         onBack={() => navigation.goBack()}
       />
       <ScrollView

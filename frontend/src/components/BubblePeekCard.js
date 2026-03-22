@@ -41,6 +41,7 @@ export default function BubblePeekCard({ bubble, onJoin, onDetails, joining }) {
         <Text style={styles.distance}>
           <Ionicons name="location-outline" size={13} color={theme.colors.textMuted} />
           {' '}{formatDistance(bubble.distance_m)}
+          {bubble.radius_m ? `  ~${bubble.radius_m}m area` : ''}
         </Text>
       )}
 

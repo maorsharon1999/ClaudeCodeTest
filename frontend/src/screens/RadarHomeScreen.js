@@ -14,12 +14,17 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { getNearbyBubbles, joinBubble } from '../api/bubbles';
-import { setVisibility } from '../api/profile';
+import { setVisibility, getProfile } from '../api/profile';
+import { getNearbyUsers } from '../api/discovery';
 import BubbleMapMarker from '../components/BubbleMapMarker';
+import BubbleAreaOverlay from '../components/BubbleAreaOverlay';
+import BubbleAreaMarker from '../components/BubbleAreaMarker';
+import UserPhotoMarker from '../components/UserPhotoMarker';
 import BubblePeekCard from '../components/BubblePeekCard';
 import mapDarkStyle from '../components/MapDarkStyle.json';
 import { IconButton } from '../components/ui';
 import { pulseLoop } from '../utils/animations';
+import { resolvePhotoUrl } from '../lib/photoUrl';
 import { CATEGORY_ICONS } from '../constants/icons';
 import { theme } from '../theme';
 
@@ -38,6 +43,8 @@ export default function RadarHomeScreen({ navigation }) {
   const [joining, setJoining] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [filterCat, setFilterCat] = useState(null);
+  const [nearbyUsers, setNearbyUsers] = useState([]);
+  const [myProfile, setMyProfile] = useState(null);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -58,6 +65,11 @@ export default function RadarHomeScreen({ navigation }) {
   const pulseAnim = useRef(new Animated.Value(0.3)).current;
   const mapRef = useRef(null);
   const pollRef = useRef(null);
+
+  // Fetch current user profile for photo marker
+  useEffect(() => {
+    getProfile().then(p => setMyProfile(p)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const fallback = { latitude: 32.08, longitude: 34.78 }; // Tel Aviv default
@@ -87,8 +99,10 @@ export default function RadarHomeScreen({ navigation }) {
 
   useEffect(() => {
     if (!myLocation) return;
+    fetchNearbyUsers();
     pollRef.current = setInterval(() => {
       fetchBubbles(myLocation.latitude, myLocation.longitude);
+      fetchNearbyUsers();
     }, POLL_INTERVAL);
     return () => clearInterval(pollRef.current);
   }, [myLocation]);
@@ -107,6 +121,15 @@ export default function RadarHomeScreen({ navigation }) {
       setBubbles(result || []);
     } catch {
       // ignore
+    }
+  }
+
+  async function fetchNearbyUsers() {
+    try {
+      const users = await getNearbyUsers();
+      setNearbyUsers(users || []);
+    } catch {
+      // ignore — endpoint may not be wired yet
     }
   }
 
@@ -183,36 +206,78 @@ export default function RadarHomeScreen({ navigation }) {
         showsUserLocation
         showsMyLocationButton={false}
       >
-        {/* Pulsing ring at user's location */}
+        {/* Bubble area overlays (below markers) */}
+        {filteredBubbles.map((b) => (
+          <BubbleAreaOverlay
+            key={`area-${b.id}`}
+            bubble={b}
+            selected={selectedBubble?.id === b.id}
+          />
+        ))}
+
+        {/* Current user photo marker */}
         <Marker
           coordinate={myLocation}
           anchor={{ x: 0.5, y: 0.5 }}
           tracksViewChanges={false}
-          zIndex={0}
+          zIndex={10}
         >
-          <Animated.View
-            style={[styles.pulseRing, { opacity: pulseAnim }]}
-            pointerEvents="none"
+          <UserPhotoMarker
+            photoUrl={myProfile?.photos?.[0] ? resolvePhotoUrl(myProfile.photos[0]) : null}
+            name={myProfile?.display_name || '?'}
+            isCurrentUser
+            size={44}
           />
         </Marker>
 
-        {filteredBubbles.map((b) => (
+        {/* Nearby user photo markers */}
+        {nearbyUsers.map((u) => (
           <Marker
-            key={b.id}
+            key={u.id || u.user_id}
             coordinate={{
-              latitude: b.jittered_lat || b.lat,
-              longitude: b.jittered_lng || b.lng,
+              latitude: u.lat,
+              longitude: u.lng,
             }}
             anchor={{ x: 0.5, y: 0.5 }}
             tracksViewChanges={false}
-            onPress={() => openCard(b)}
+            zIndex={5}
           >
-            <BubbleMapMarker
-              category={b.category}
-              memberCount={b.member_count}
+            <UserPhotoMarker
+              photoUrl={u.photos?.[0] ? resolvePhotoUrl(u.photos[0]) : null}
+              name={u.display_name || '?'}
+              size={40}
             />
           </Marker>
         ))}
+
+        {/* Bubble center markers */}
+        {filteredBubbles.map((b) => {
+          const hasShape = b.shape_type && b.shape_type !== 'circle' && b.shape_coords;
+          return (
+            <Marker
+              key={b.id}
+              coordinate={{
+                latitude: b.jittered_lat || b.lat,
+                longitude: b.jittered_lng || b.lng,
+              }}
+              anchor={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={false}
+              onPress={() => openCard(b)}
+            >
+              {hasShape ? (
+                <BubbleAreaMarker
+                  category={b.category}
+                  memberCount={b.member_count}
+                />
+              ) : (
+                <BubbleMapMarker
+                  category={b.category}
+                  memberCount={b.member_count}
+                />
+              )}
+            </Marker>
+          );
+        })}
       </MapView>
 
       {/* Top bar overlay */}

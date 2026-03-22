@@ -1,7 +1,10 @@
 import client from './client';
 
-export async function createBubble({ title, category, description, duration_h, lat, lng }) {
-  const res = await client.post('/bubbles', { title, category, description, duration_h, lat, lng });
+export async function createBubble({ title, category, description, duration_h, lat, lng, shape_type, radius_m, shape_coords }) {
+  const res = await client.post('/bubbles', {
+    title, category, description, duration_h, lat, lng,
+    shape_type, radius_m, shape_coords,
+  });
   return res.data.bubble;
 }
 
