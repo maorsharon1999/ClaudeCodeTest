@@ -203,15 +203,16 @@ export default function RadarHomeScreen({ navigation }) {
           latitudeDelta: 0.018,
           longitudeDelta: 0.018,
         }}
-        showsUserLocation
+        showsUserLocation={false}
         showsMyLocationButton={false}
       >
-        {/* Bubble area overlays (below markers) */}
+        {/* Bubble area overlays (below markers) — tappable */}
         {filteredBubbles.map((b) => (
           <BubbleAreaOverlay
             key={`area-${b.id}`}
             bubble={b}
             selected={selectedBubble?.id === b.id}
+            onPress={() => openCard(b)}
           />
         ))}
 

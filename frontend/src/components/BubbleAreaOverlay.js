@@ -18,7 +18,7 @@ function rectCornersToPolygon(coords) {
   ];
 }
 
-export default function BubbleAreaOverlay({ bubble, selected = false }) {
+export default function BubbleAreaOverlay({ bubble, selected = false, onPress }) {
   const fill = selected ? FILL_SELECTED : FILL_DEFAULT;
   const stroke = selected ? STROKE_SELECTED : STROKE_DEFAULT;
   const shapeType = bubble.shape_type || 'circle';
@@ -32,6 +32,8 @@ export default function BubbleAreaOverlay({ bubble, selected = false }) {
         strokeColor={stroke}
         strokeWidth={STROKE_WIDTH}
         zIndex={0}
+        tappable={!!onPress}
+        onPress={onPress}
       />
     );
   }
@@ -48,6 +50,8 @@ export default function BubbleAreaOverlay({ bubble, selected = false }) {
         strokeColor={stroke}
         strokeWidth={STROKE_WIDTH}
         zIndex={0}
+        tappable={!!onPress}
+        onPress={onPress}
       />
     );
   }
@@ -61,6 +65,8 @@ export default function BubbleAreaOverlay({ bubble, selected = false }) {
         strokeColor={stroke}
         strokeWidth={STROKE_WIDTH}
         zIndex={0}
+        tappable={!!onPress}
+        onPress={onPress}
       />
     );
   }

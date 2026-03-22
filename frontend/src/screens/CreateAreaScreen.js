@@ -15,10 +15,14 @@ import { fadeInUp, fadeInUpStyle } from '../utils/animations';
 
 const MIN_RADIUS = 50;
 const MAX_RADIUS = 2000;
+const MAX_PLACEMENT_RADIUS = 1000; // 1 km from user location
 const MAX_POLYGON_VERTICES = 20;
+const CLOSE_THRESHOLD_M = 80; // easier to close polygon on mobile
 
 const FILL_COLOR = 'rgba(123,97,255,0.12)';
 const STROKE_COLOR = 'rgba(123,97,255,0.5)';
+const BOUNDARY_COLOR = 'rgba(255,255,255,0.12)';
+const BOUNDARY_STROKE = 'rgba(255,255,255,0.25)';
 
 function haversineM(lat1, lng1, lat2, lng2) {
   const toRad = d => (d * Math.PI) / 180;
@@ -51,12 +55,13 @@ function offsetPoint(lat, lng, distanceM, bearing) {
 export default function CreateAreaScreen({ navigation, route }) {
   const params = route.params;
   const userLoc = params.location;
-
-  const [shapeMode, setShapeMode] = useState('circle');
-  const [circleCenter, setCircleCenter] = useState({
+  const userCoord = {
     latitude: userLoc?.lat || 32.08,
     longitude: userLoc?.lng || 34.78,
-  });
+  };
+
+  const [shapeMode, setShapeMode] = useState('circle');
+  const [circleCenter, setCircleCenter] = useState(userCoord);
   const [circleRadius, setCircleRadius] = useState(200);
   const [edgeHandle, setEdgeHandle] = useState(null);
   const [polygonPoints, setPolygonPoints] = useState([]);
@@ -76,15 +81,22 @@ export default function CreateAreaScreen({ navigation, route }) {
     setEdgeHandle(handle);
   }, [circleCenter, circleRadius]);
 
+  // Check if a point is within 1km of user
+  function isWithinBoundary(lat, lng) {
+    return haversineM(userCoord.latitude, userCoord.longitude, lat, lng) <= MAX_PLACEMENT_RADIUS;
+  }
+
   function handleMapPress(e) {
     const coord = e.nativeEvent.coordinate;
+    if (!isWithinBoundary(coord.latitude, coord.longitude)) return; // ignore taps outside 1km
+
     if (shapeMode === 'polygon') {
       if (polygonClosed) return;
       // Check if tapping near first vertex to close
       if (polygonPoints.length >= 3) {
         const first = polygonPoints[0];
         const dist = haversineM(first.latitude, first.longitude, coord.latitude, coord.longitude);
-        if (dist < 30) {
+        if (dist < CLOSE_THRESHOLD_M) {
           setPolygonClosed(true);
           return;
         }
@@ -93,6 +105,7 @@ export default function CreateAreaScreen({ navigation, route }) {
       setPolygonPoints(prev => [...prev, coord]);
     } else if (shapeMode === 'rectangle') {
       if (rectCorners.length >= 2) return;
+      if (!isWithinBoundary(coord.latitude, coord.longitude)) return;
       setRectCorners(prev => [...prev, coord]);
     }
   }
@@ -107,13 +120,18 @@ export default function CreateAreaScreen({ navigation, route }) {
     setCircleRadius(clamped);
   }
 
+  function handleCircleCenterDrag(e) {
+    const coord = e.nativeEvent.coordinate;
+    // Clamp center within 1km of user
+    if (isWithinBoundary(coord.latitude, coord.longitude)) {
+      setCircleCenter(coord);
+    }
+  }
+
   function handleClear() {
     if (shapeMode === 'circle') {
       setCircleRadius(200);
-      setCircleCenter({
-        latitude: userLoc?.lat || 32.08,
-        longitude: userLoc?.lng || 34.78,
-      });
+      setCircleCenter(userCoord);
     } else if (shapeMode === 'polygon') {
       setPolygonPoints([]);
       setPolygonClosed(false);
@@ -127,6 +145,12 @@ export default function CreateAreaScreen({ navigation, route }) {
     if (shapeMode === 'polygon') return polygonClosed && polygonPoints.length >= 3;
     if (shapeMode === 'rectangle') return rectCorners.length === 2;
     return false;
+  }
+
+  function handleClosePolygon() {
+    if (polygonPoints.length >= 3 && !polygonClosed) {
+      setPolygonClosed(true);
+    }
   }
 
   function handleConfirm() {
@@ -194,6 +218,8 @@ export default function CreateAreaScreen({ navigation, route }) {
       ]
     : [];
 
+  const showCloseBtn = shapeMode === 'polygon' && polygonPoints.length >= 3 && !polygonClosed;
+
   return (
     <Animated.View style={[styles.flex, fadeInUpStyle(enterAnim)]}>
       {/* Header */}
@@ -215,13 +241,32 @@ export default function CreateAreaScreen({ navigation, route }) {
         style={styles.map}
         customMapStyle={mapDarkStyle}
         initialRegion={{
-          latitude: userLoc?.lat || 32.08,
-          longitude: userLoc?.lng || 34.78,
-          latitudeDelta: 0.012,
-          longitudeDelta: 0.012,
+          ...userCoord,
+          latitudeDelta: 0.02,    // wider zoom to see ~1km
+          longitudeDelta: 0.02,
         }}
         onPress={handleMapPress}
       >
+        {/* 1km boundary ring — shows placement limit */}
+        <Circle
+          center={userCoord}
+          radius={MAX_PLACEMENT_RADIUS}
+          fillColor={BOUNDARY_COLOR}
+          strokeColor={BOUNDARY_STROKE}
+          strokeWidth={1}
+          zIndex={-1}
+        />
+
+        {/* User location dot */}
+        <Marker
+          coordinate={userCoord}
+          anchor={{ x: 0.5, y: 0.5 }}
+          tracksViewChanges={false}
+          zIndex={1}
+        >
+          <View style={styles.userDot} />
+        </Marker>
+
         {/* Circle mode */}
         {shapeMode === 'circle' && (
           <>
@@ -235,7 +280,7 @@ export default function CreateAreaScreen({ navigation, route }) {
             <Marker
               coordinate={circleCenter}
               draggable
-              onDragEnd={(e) => setCircleCenter(e.nativeEvent.coordinate)}
+              onDragEnd={handleCircleCenterDrag}
               anchor={{ x: 0.5, y: 0.5 }}
               tracksViewChanges={false}
             >
@@ -284,12 +329,13 @@ export default function CreateAreaScreen({ navigation, route }) {
                 onPress={() => {
                   if (i === 0 && polygonPoints.length >= 3 && !polygonClosed) {
                     setPolygonClosed(true);
-                  } else if (polygonPoints.length > 3) {
+                  } else if (polygonClosed && polygonPoints.length > 3) {
                     setPolygonPoints(prev => prev.filter((_, idx) => idx !== i));
+                    setPolygonClosed(false); // reopen so they can re-close
                   }
                 }}
               >
-                <View style={[styles.vertexDot, i === 0 && styles.vertexFirst]} />
+                <View style={[styles.vertexDot, i === 0 && !polygonClosed && styles.vertexFirst]} />
               </Marker>
             ))}
           </>
@@ -312,9 +358,11 @@ export default function CreateAreaScreen({ navigation, route }) {
                 coordinate={pt}
                 draggable
                 onDragEnd={(e) => {
+                  const c = e.nativeEvent.coordinate;
+                  if (!isWithinBoundary(c.latitude, c.longitude)) return;
                   setRectCorners(prev => {
                     const next = [...prev];
-                    next[i] = e.nativeEvent.coordinate;
+                    next[i] = c;
                     return next;
                   });
                 }}
@@ -332,7 +380,7 @@ export default function CreateAreaScreen({ navigation, route }) {
       <View style={styles.hintRow}>
         <Text style={styles.hintText}>
           {shapeMode === 'circle'
-            ? 'Drag center & edge to adjust'
+            ? 'Drag center & edge to adjust (up to 1km)'
             : shapeMode === 'polygon'
             ? polygonClosed
               ? 'Polygon closed. Tap vertex to remove.'
@@ -376,6 +424,15 @@ export default function CreateAreaScreen({ navigation, route }) {
             <Ionicons name="refresh-outline" size={18} color={theme.colors.textMuted} />
             <Text style={styles.clearBtnText}>Clear</Text>
           </TouchableOpacity>
+
+          {/* Explicit close polygon button */}
+          {showCloseBtn && (
+            <TouchableOpacity style={styles.closeBtn} onPress={handleClosePolygon}>
+              <Ionicons name="checkmark-done-outline" size={18} color={theme.colors.cyan} />
+              <Text style={styles.closeBtnText}>Close</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={[styles.confirmBtn, !canConfirm() && styles.confirmBtnDisabled]}
             onPress={handleConfirm}
@@ -405,12 +462,20 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '700', color: theme.colors.textPrimary },
   headerSubtitle: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
   map: { flex: 1 },
-  centerDot: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: theme.colors.brand,
+  userDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#00C9A7',
     borderWidth: 2,
+    borderColor: '#fff',
+  },
+  centerDot: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: theme.colors.brand,
+    borderWidth: 2.5,
     borderColor: '#fff',
   },
   edgeHandle: {
@@ -423,15 +488,19 @@ const styles = StyleSheet.create({
   },
   edgeLabel: { color: theme.colors.brand, fontSize: 12, fontWeight: '700' },
   vertexDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: theme.colors.brand,
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: '#fff',
   },
   vertexFirst: {
     backgroundColor: theme.colors.cyan,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 3,
     borderColor: '#fff',
   },
   hintRow: {
@@ -483,7 +552,7 @@ const styles = StyleSheet.create({
   modeBtnTextActive: { color: theme.colors.brand },
   actionRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   clearBtn: {
     flexDirection: 'row',
@@ -491,12 +560,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 14,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     borderRadius: theme.radii.md,
     borderWidth: 1,
     borderColor: theme.colors.borderDefault,
   },
   clearBtnText: { color: theme.colors.textMuted, fontSize: 14, fontWeight: '600' },
+  closeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: theme.radii.md,
+    borderWidth: 1,
+    borderColor: theme.colors.cyan,
+    backgroundColor: 'rgba(0,201,167,0.1)',
+  },
+  closeBtnText: { color: theme.colors.cyan, fontSize: 14, fontWeight: '600' },
   confirmBtn: {
     flex: 1,
     alignItems: 'center',
