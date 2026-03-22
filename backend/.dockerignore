@@ -9,3 +9,7 @@ src/__tests__/
 *-service-account*.json
 firebase-adminsdk*.json
 serviceAccountKey.json
+
+# Deployment secret files — never commit
+deploy-env.sh
+firebase-sa-minified.tmp

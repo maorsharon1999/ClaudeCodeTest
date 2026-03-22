@@ -187,8 +187,8 @@ async function findOrCreateByFirebaseUid(firebaseUid, _phoneNumber, email) {
 
   // Ensure a blank profile row exists so photo uploads work before profile setup completes
   await pool.query(
-    `INSERT INTO profiles (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
-    [userId]
+    `INSERT INTO profiles (user_id, display_name) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING`,
+    [userId, 'New User']
   );
 
   return { userId, isNew: true };

@@ -83,9 +83,9 @@ async function createBubble(userId, { title, description, category, lat, lng, du
   const { rows } = await pool.query(
     `INSERT INTO bubbles
        (creator_id, title, description, category, lat, lng, duration_h, expires_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW() + ($7 || ' hours')::interval)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, NOW() + make_interval(hours => $8))
      RETURNING *`,
-    [userId, title.trim(), description?.trim() || null, category, latNum, lngNum, durationH]
+    [userId, title.trim(), description?.trim() || null, category, latNum, lngNum, durationH, durationH]
   );
   const bubble = rows[0];
 

@@ -13,7 +13,8 @@
  */
 
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { initializeAuth, getAuth, getReactNativePersistence, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
 const FIREBASE_API_KEY     = process.env.EXPO_PUBLIC_FIREBASE_API_KEY;
 const FIREBASE_AUTH_DOMAIN = process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -37,11 +38,12 @@ export function getFirebaseAuth() {
     projectId:  FIREBASE_PROJECT_ID,
   };
 
-  const app = getApps().length === 0
-    ? initializeApp(firebaseConfig)
-    : getApps()[0];
+  const isNew = getApps().length === 0;
+  const app = isNew ? initializeApp(firebaseConfig) : getApps()[0];
 
-  _auth = getAuth(app);
+  _auth = isNew
+    ? initializeAuth(app, { persistence: getReactNativePersistence(ReactNativeAsyncStorage) })
+    : getAuth(app);
   return _auth;
 }
 

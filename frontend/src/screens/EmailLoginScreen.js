@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Animated,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { verifyFirebaseIdToken } from '../api/auth';
 import { signInOrRegisterWithEmail } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
@@ -77,6 +78,13 @@ export default function EmailLoginScreen() {
 
       await signIn(data);
     } catch (err) {
+      console.error('[AUTH_DEBUG] Sign-in error:', JSON.stringify({
+        message: err.message,
+        code: err.code,
+        responseStatus: err.response?.status,
+        responseData: err.response?.data,
+        name: err.name,
+      }));
       const firebaseCode = err.code;
       const backendCode  = err.response?.data?.error?.code;
 
@@ -115,7 +123,7 @@ export default function EmailLoginScreen() {
         <View style={styles.decorCircle} />
 
         <Text style={styles.title}>Bubble</Text>
-        <View style={[styles.accentBar, { backgroundColor: '#6C47FF' }]} />
+        <View style={[styles.accentBar, { backgroundColor: theme.colors.brand }]} />
         <Text style={styles.subtitle}>
           {isRegistering ? 'Create your account' : 'Welcome back'}
         </Text>
@@ -151,7 +159,11 @@ export default function EmailLoginScreen() {
             onPress={() => setShowPassword((v) => !v)}
             accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
           >
-            <Text style={styles.eyeText}>{showPassword ? '🙈' : '👁'}</Text>
+            <Ionicons
+              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              size={20}
+              color={theme.colors.textMuted}
+            />
           </TouchableOpacity>
         </View>
 
@@ -202,7 +214,7 @@ export default function EmailLoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: theme.colors.bgTinted },
+  flex: { flex: 1, backgroundColor: theme.colors.bgDeep },
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -215,7 +227,7 @@ const styles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: 'rgba(108,71,255,0.07)',
+    backgroundColor: 'rgba(123,97,255,0.1)',
   },
   title: {
     ...theme.typography.displayLg,
@@ -244,6 +256,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 16,
     color: theme.colors.textPrimary,
+    backgroundColor: theme.colors.inputBg,
     marginBottom: 12,
   },
   inputError: {
@@ -261,9 +274,7 @@ const styles = StyleSheet.create({
     top: 14,
     padding: 2,
   },
-  eyeText: {
-    fontSize: 18,
-  },
+
   errorText: {
     color: theme.colors.error,
     fontSize: 13,

@@ -149,37 +149,6 @@ Use for:
 - anti-jitter / anti-flicker
 - relevance / proximity ranking changes
 
-### map-recommendation-builder
-Use for:
-- map-based bubble discovery
-- privacy-safe nearby bubble visualization
-- nearby suggestion cards
-- optional sound/haptic cue triggers for map/recommendation features
-
-### profile-media-builder
-Use for:
-- richer profile screens
-- image gallery
-- media upload flow
-- interest tags / intent details
-- profile detail improvements
-
-### voice-chat-builder
-Use for:
-- voice-note recording and playback
-- upload/send/cancel flow
-- duration and size constraints
-- permission handling
-- chat integration for audio messaging
-
-### design-motion-director
-Use for:
-- motion design
-- splash/onboarding polish
-- premium interaction feel
-- subtle motion upgrades
-- visual consistency and modern UI refinement
-
 ### visual-experience-director
 Use for:
 - high-level visual direction
@@ -236,14 +205,9 @@ Use for:
 - Use `backend-builder` for backend/server changes.
 - Use `frontend-builder` for frontend/mobile changes.
 - Use `matching-presence-engineer` only when presence/discovery/relevance/visibility logic changes.
-- Use `map-recommendation-builder` only for map/suggestion work.
-- Use `profile-media-builder` only for richer profile/media work.
-- Use `voice-chat-builder` only for voice-note/audio chat work.
 
 ### Visual and design routing
-- Use `visual-experience-director` as the default design/UX review and premium polish agent.
-- Use `design-motion-director` when the task is specifically about motion, splash, onboarding feel, or subtle animated polish.
-- Do not invoke both by default unless the task genuinely needs both strategic visual direction and motion-specific refinement.
+- Use `visual-experience-director` as the default for all design/UX/motion work.
 
 ### Validation routing
 - After meaningful implementation, run `qa-test-engineer`.

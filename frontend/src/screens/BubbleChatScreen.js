@@ -9,10 +9,11 @@ import {
   ActivityIndicator,
   Platform,
   KeyboardAvoidingView,
-  Image,
+  Animated,
   Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import {
   getBubble,
   getBubbleMessages,
@@ -24,8 +25,33 @@ import {
 import { blockUser, reportUser } from '../api/chat';
 import { resolvePhotoUrl } from '../lib/photoUrl';
 import { theme } from '../theme';
+import { Header, Avatar, EmptyState, Button } from '../components/ui';
+import { timeRemaining } from '../utils/timeFormatters';
+import { fadeInUp, fadeInUpStyle } from '../utils/animations';
 
 const POLL_INTERVAL = 4000;
+
+// Animated message row — each item gets its own entrance on mount
+function MessageRow({ item, styles }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    fadeInUp(anim, { duration: 220 }).start();
+  }, [anim]);
+
+  return (
+    <Animated.View style={fadeInUpStyle(anim, 10)}>
+      <View style={styles.msgRow}>
+        <Avatar name={item.sender_display_name} size={32} style={styles.msgAvatarSpacing} />
+        <View style={styles.msgContent}>
+          <Text style={styles.msgSender}>{item.sender_display_name || 'Someone'}</Text>
+          <View style={styles.msgBubble}>
+            <Text style={styles.msgBody}>{item.body}</Text>
+          </View>
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
 
 export default function BubbleChatScreen({ route, navigation }) {
   const { bubbleId, bubbleTitle } = route.params;
@@ -39,6 +65,7 @@ export default function BubbleChatScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const pollRef = useRef(null);
   const flatListRef = useRef(null);
+  const enterAnim = useRef(new Animated.Value(0)).current;
 
   // Fetch bubble info + initial messages
   useEffect(() => {
@@ -60,6 +87,7 @@ export default function BubbleChatScreen({ route, navigation }) {
         setExpired(true);
       } finally {
         setLoading(false);
+        fadeInUp(enterAnim).start();
       }
     }
     init();
@@ -88,15 +116,6 @@ export default function BubbleChatScreen({ route, navigation }) {
       return () => clearInterval(pollRef.current);
     }, [bubbleId, expired])
   );
-
-  function timeRemaining() {
-    if (!bubble) return '';
-    const diff = new Date(bubble.expires_at) - new Date();
-    if (diff <= 0) return 'Expired';
-    const h = Math.floor(diff / 3600000);
-    const m = Math.floor((diff % 3600000) / 60000);
-    return h > 0 ? `${h}h ${m}m left` : `${m}m left`;
-  }
 
   async function handleSend() {
     const body = text.trim();
@@ -190,164 +209,161 @@ export default function BubbleChatScreen({ route, navigation }) {
   if (expired) {
     return (
       <View style={styles.center}>
-        <Text style={styles.expiredTitle}>This bubble has ended</Text>
-        <Text style={styles.expiredSub}>Bubbles are temporary by design.</Text>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtnText}>Back to Map</Text>
-        </TouchableOpacity>
+        <EmptyState
+          icon="time-outline"
+          title="This bubble has ended"
+          subtitle="Bubbles are temporary by design."
+          ctaTitle="Go Back"
+          onCtaPress={() => navigation.goBack()}
+        />
       </View>
     );
   }
 
   function renderMessage({ item }) {
-    return (
-      <View style={styles.msgRow}>
-        <View style={[styles.msgAvatar, styles.msgAvatarFallback]}>
-          <Text style={styles.msgAvatarText}>{item.sender_display_name?.[0]?.toUpperCase() || '?'}</Text>
-        </View>
-        <View style={styles.msgContent}>
-          <Text style={styles.msgSender}>{item.sender_display_name || 'Someone'}</Text>
-          <Text style={styles.msgBody}>{item.body}</Text>
-        </View>
-      </View>
-    );
+    return <MessageRow item={item} styles={styles} />;
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBack}>
-          <Text style={styles.headerBackText}>{'<'}</Text>
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle} numberOfLines={1}>{bubbleTitle || bubble?.title}</Text>
-          <Text style={styles.headerSub}>
-            {members.length} member{members.length !== 1 ? 's' : ''} · {timeRemaining()}
-          </Text>
-        </View>
-        <TouchableOpacity onPress={() => setShowMembers(!showMembers)} style={styles.headerBtn}>
-          <Text style={styles.headerBtnText}>{showMembers ? 'Chat' : 'Members'}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {showMembers ? (
-        <FlatList
-          data={members}
-          keyExtractor={(m) => m.user_id}
-          renderItem={({ item }) => {
-            const memberPhoto = item.photos?.[0] ? resolvePhotoUrl(item.photos[0]) : null;
-            return (
-              <View style={styles.memberRow}>
-                {memberPhoto ? (
-                  <Image source={{ uri: memberPhoto }} style={styles.memberPhoto} />
-                ) : (
-                  <View style={[styles.memberPhoto, styles.memberPhotoFallback]}>
-                    <Text style={styles.memberInitial}>{item.display_name?.[0]?.toUpperCase() || '?'}</Text>
-                  </View>
-                )}
-                <Text style={styles.memberName}>{item.display_name || 'Someone'}</Text>
-                <View style={styles.memberActions}>
-                  <TouchableOpacity onPress={() => handleReportMember(item.user_id, item.display_name)} style={styles.memberActionBtn}>
-                    <Text style={styles.memberActionText}>Report</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handleBlockMember(item.user_id, item.display_name)} style={styles.memberActionBtn}>
-                    <Text style={[styles.memberActionText, { color: theme.colors.error }]}>Block</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          }}
-          contentContainerStyle={styles.membersList}
-          ListFooterComponent={
-            <View>
-              <TouchableOpacity style={styles.reportBubbleBtn} onPress={handleReportBubble}>
-                <Text style={styles.reportBubbleBtnText}>Report Bubble</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.leaveBtn} onPress={handleLeave}>
-                <Text style={styles.leaveBtnText}>Leave Bubble</Text>
-              </TouchableOpacity>
-            </View>
+    <Animated.View style={[styles.flex, fadeInUpStyle(enterAnim)]}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        <Header
+          title={bubbleTitle || bubble?.title}
+          subtitle={`${members.length} member${members.length !== 1 ? 's' : ''} · ${timeRemaining(bubble?.expires_at)}`}
+          onBack={() => navigation.goBack()}
+          rightAction={
+            <TouchableOpacity onPress={() => setShowMembers(!showMembers)} style={styles.headerRightBtn}>
+              <Ionicons
+                name={showMembers ? 'chatbubbles-outline' : 'people-outline'}
+                size={22}
+                color={theme.colors.textSecondary}
+              />
+            </TouchableOpacity>
           }
         />
-      ) : (
-        <>
+
+        {showMembers ? (
           <FlatList
-            ref={flatListRef}
-            data={messages}
-            keyExtractor={(m) => m.id}
-            renderItem={renderMessage}
-            contentContainerStyle={styles.messagesList}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-            ListEmptyComponent={
-              <View style={styles.emptyChat}>
-                <Text style={styles.emptyChatText}>No messages yet. Say hi!</Text>
+            data={members}
+            keyExtractor={(m) => m.user_id}
+            renderItem={({ item }) => {
+              const memberPhoto = item.photos?.[0] ? resolvePhotoUrl(item.photos[0]) : null;
+              return (
+                <View style={styles.memberRow}>
+                  <Avatar uri={memberPhoto} name={item.display_name} size={40} style={styles.memberAvatarSpacing} />
+                  <Text style={styles.memberName}>{item.display_name || 'Someone'}</Text>
+                  <View style={styles.memberActions}>
+                    <TouchableOpacity
+                      onPress={() => handleReportMember(item.user_id, item.display_name)}
+                      style={styles.memberActionBtn}
+                    >
+                      <Text style={styles.memberActionText}>Report</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleBlockMember(item.user_id, item.display_name)}
+                      style={styles.memberActionBtn}
+                    >
+                      <Text style={[styles.memberActionText, { color: theme.colors.error }]}>Block</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            }}
+            contentContainerStyle={styles.membersList}
+            style={styles.membersContainer}
+            ListFooterComponent={
+              <View style={styles.membersFooter}>
+                <Button
+                  title="Report Bubble"
+                  variant="ghost"
+                  size="md"
+                  onPress={handleReportBubble}
+                  style={styles.reportBubbleBtn}
+                />
+                <Button
+                  title="Leave Bubble"
+                  variant="danger"
+                  size="md"
+                  onPress={handleLeave}
+                  style={styles.leaveBtn}
+                />
               </View>
             }
           />
-          <View style={[styles.composeBar, theme.shadows.inputBar]}>
-            <TextInput
-              style={styles.composeInput}
-              placeholder="Type a message..."
-              placeholderTextColor={theme.colors.textFaint}
-              value={text}
-              onChangeText={setText}
-              maxLength={1000}
-              multiline
+        ) : (
+          <>
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              keyExtractor={(m) => m.id}
+              renderItem={renderMessage}
+              contentContainerStyle={styles.messagesList}
+              style={styles.messagesContainer}
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+              ListEmptyComponent={
+                <EmptyState
+                  icon="chatbubble-outline"
+                  title="No messages yet"
+                  subtitle="Say hi to start the conversation."
+                  style={styles.emptyChatState}
+                />
+              }
             />
-            <TouchableOpacity
-              style={[styles.sendBtn, (!text.trim() || sending) && styles.sendBtnDisabled]}
-              onPress={handleSend}
-              disabled={!text.trim() || sending}
-            >
-              {sending ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.sendBtnText}>Send</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </>
-      )}
-    </KeyboardAvoidingView>
+            <View style={[styles.composeBar, theme.shadows.inputBar]}>
+              <TextInput
+                style={styles.composeInput}
+                placeholder="Type a message..."
+                placeholderTextColor={theme.colors.textFaint}
+                value={text}
+                onChangeText={setText}
+                maxLength={1000}
+                multiline
+              />
+              <TouchableOpacity
+                style={[styles.sendBtn, (!text.trim() || sending) && styles.sendBtnDisabled]}
+                onPress={handleSend}
+                disabled={!text.trim() || sending}
+              >
+                {sending ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="send" size={18} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+      </KeyboardAvoidingView>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: theme.colors.bgBase },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.bgBase, padding: 32 },
+  flex: { flex: 1, backgroundColor: theme.colors.bgDeep },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.bgDeep, padding: 32 },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 56 : 12,
-    paddingBottom: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.borderSubtle,
-    backgroundColor: theme.colors.bgSubtle,
-  },
-  headerBack: { padding: 8, marginRight: 8 },
-  headerBackText: { fontSize: 22, color: theme.colors.brand, fontWeight: '600' },
-  headerCenter: { flex: 1 },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: theme.colors.textBody },
-  headerSub: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
-  headerBtn: { padding: 8 },
-  headerBtnText: { fontSize: 13, color: theme.colors.brand, fontWeight: '600' },
+  // Header right action
+  headerRightBtn: { padding: 8 },
 
   // Messages
+  messagesContainer: { flex: 1, backgroundColor: theme.colors.bgDeep },
   messagesList: { padding: 16, paddingBottom: 8 },
-  msgRow: { flexDirection: 'row', marginBottom: 14 },
-  msgAvatar: { width: 32, height: 32, borderRadius: 16, marginRight: 10, backgroundColor: theme.colors.bgDim },
-  msgAvatarFallback: { alignItems: 'center', justifyContent: 'center' },
-  msgAvatarText: { fontSize: 13, fontWeight: '700', color: theme.colors.textMuted },
+  msgRow: { flexDirection: 'row', marginBottom: 14, alignItems: 'flex-start' },
+  msgAvatarSpacing: { marginRight: 10, marginTop: 2 },
   msgContent: { flex: 1 },
-  msgSender: { fontSize: 13, fontWeight: '600', color: theme.colors.textSecondary, marginBottom: 2 },
+  msgSender: { fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary, marginBottom: 4 },
+  msgBubble: {
+    backgroundColor: theme.colors.bgElevated,
+    borderRadius: theme.radii.md,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignSelf: 'flex-start',
+    maxWidth: '90%',
+  },
   msgBody: { fontSize: 15, color: theme.colors.textBody, lineHeight: 20 },
 
   // Compose
@@ -357,8 +373,8 @@ const styles = StyleSheet.create({
     padding: 10,
     paddingBottom: Platform.OS === 'ios' ? 28 : 10,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.borderSubtle,
-    backgroundColor: theme.colors.bgSubtle,
+    borderTopColor: theme.colors.borderDefault,
+    backgroundColor: theme.colors.bgSurface,
   },
   composeInput: {
     flex: 1,
@@ -370,54 +386,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 15,
-    color: theme.colors.textBody,
-    backgroundColor: theme.colors.bgBase,
+    color: theme.colors.textPrimary,
+    backgroundColor: theme.colors.inputBg,
   },
   sendBtn: {
     marginLeft: 10,
+    width: 40,
     height: 40,
-    paddingHorizontal: 18,
     backgroundColor: theme.colors.brand,
     borderRadius: theme.radii.md,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sendBtnDisabled: { opacity: 0.4 },
-  sendBtnText: { color: '#fff', fontSize: 15, fontWeight: '600' },
 
-  // Empty state
-  emptyChat: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60 },
-  emptyChatText: { color: theme.colors.textMuted, fontSize: 15 },
+  // Empty chat state
+  emptyChatState: { paddingTop: 60 },
 
   // Members
+  membersContainer: { flex: 1, backgroundColor: theme.colors.bgDeep },
   membersList: { padding: 16 },
-  memberRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  memberPhoto: { width: 40, height: 40, borderRadius: 20, marginRight: 12, backgroundColor: theme.colors.bgDim },
-  memberPhotoFallback: { alignItems: 'center', justifyContent: 'center' },
-  memberInitial: { fontSize: 16, fontWeight: '700', color: theme.colors.textMuted },
-  memberName: { fontSize: 15, fontWeight: '500', color: theme.colors.textBody },
+  memberRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  memberAvatarSpacing: { marginRight: 12 },
+  memberName: { flex: 1, fontSize: 15, fontWeight: '500', color: theme.colors.textBody },
 
   // Member actions
-  memberActions: { flexDirection: 'row', marginLeft: 'auto', gap: 12 },
+  memberActions: { flexDirection: 'row', gap: 12 },
   memberActionBtn: { padding: 4 },
   memberActionText: { fontSize: 13, color: theme.colors.textMuted, fontWeight: '500' },
 
-  // Report & Leave
-  reportBubbleBtn: { marginTop: 24, padding: 14, alignItems: 'center' },
-  reportBubbleBtnText: { color: theme.colors.textMuted, fontSize: 14, fontWeight: '500' },
-  leaveBtn: { marginTop: 4, padding: 14, alignItems: 'center' },
-  leaveBtnText: { color: theme.colors.error, fontSize: 15, fontWeight: '600' },
-
-  // Expired
-  expiredTitle: { fontSize: 20, fontWeight: '700', color: theme.colors.textBody, marginBottom: 8 },
-  expiredSub: { fontSize: 15, color: theme.colors.textMuted, marginBottom: 24 },
-  backBtn: {
-    height: 48,
-    paddingHorizontal: 32,
-    backgroundColor: theme.colors.brand,
-    borderRadius: theme.radii.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  // Members footer
+  membersFooter: { marginTop: 24, gap: 8 },
+  reportBubbleBtn: { marginBottom: 4 },
+  leaveBtn: {},
 });

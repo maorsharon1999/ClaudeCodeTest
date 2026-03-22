@@ -1,6 +1,7 @@
 # Bubble MVP — Agent Memory Index
 
 ## Repository Structure & Cartography
+- [`repo-cartographer/REPO_MAP.md`](repo-cartographer/REPO_MAP.md) — Complete codebase cartography (backend routes/services, frontend screens/components, database schema, entry points, environment config, existing patterns, testing coverage, and next steps).
 - [`repo-cartographer/epic2-current-state.md`](repo-cartographer/epic2-current-state.md) — Complete inventory of backend/frontend files for Epic 2 (photos, intent field, discovery thumbnails, chat avatars). Reference for all file locations and current state.
 
 ## Product Architecture
