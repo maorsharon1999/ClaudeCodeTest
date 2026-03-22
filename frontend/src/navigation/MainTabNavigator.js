@@ -6,6 +6,7 @@ import ExploreStack from './ExploreStack';
 import InboxStack from './InboxStack';
 import ProfileStack from './ProfileStack';
 import CreateBubbleScreen from '../screens/CreateBubbleScreen';
+import { theme } from '../theme';
 
 const Tab = createBottomTabNavigator();
 
@@ -16,6 +17,7 @@ export default function MainTabNavigator() {
       screenOptions={{
         headerShown: false,
       }}
+      sceneContainerStyle={{ backgroundColor: theme.colors.bgDeep }}
     >
       <Tab.Screen name="RadarStack" component={RadarStack} />
       <Tab.Screen name="ExploreStack" component={ExploreStack} />

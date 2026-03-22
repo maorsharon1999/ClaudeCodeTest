@@ -36,14 +36,28 @@ export default function RadarHomeScreen({ navigation }) {
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
-      let loc = await Location.getLastKnownPositionAsync();
-      if (!loc) {
-        loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+      if (status !== 'granted') {
+        // Fallback: use a default region so the app isn't stuck
+        const fallback = { latitude: 32.08, longitude: 34.78 }; // Tel Aviv default
+        setMyLocation(fallback);
+        return;
       }
-      const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-      setMyLocation(coords);
-      fetchBubbles(coords.latitude, coords.longitude);
+      try {
+        let loc = await Location.getLastKnownPositionAsync();
+        if (!loc) {
+          loc = await Promise.race([
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000)),
+          ]);
+        }
+        const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+        setMyLocation(coords);
+        fetchBubbles(coords.latitude, coords.longitude);
+      } catch {
+        // Timeout or error — use fallback so the app renders
+        const fallback = { latitude: 32.08, longitude: 34.78 };
+        setMyLocation(fallback);
+      }
     })();
   }, []);
 

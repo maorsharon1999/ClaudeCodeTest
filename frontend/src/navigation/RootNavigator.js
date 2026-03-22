@@ -13,9 +13,14 @@ import MainTabNavigator from './MainTabNavigator';
 const AuthStack = createNativeStackNavigator();
 const RootStack = createNativeStackNavigator();
 
+const darkScreenOptions = {
+  headerShown: false,
+  contentStyle: { backgroundColor: theme.colors.bgDeep },
+};
+
 function AuthNavigator() {
   return (
-    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+    <AuthStack.Navigator screenOptions={darkScreenOptions}>
       <AuthStack.Screen name="EmailLogin" component={EmailLoginScreen} />
     </AuthStack.Navigator>
   );
@@ -25,7 +30,7 @@ function AppNavigator() {
   const { profileComplete } = useAuth();
 
   return (
-    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+    <RootStack.Navigator screenOptions={darkScreenOptions}>
       {!profileComplete && (
         <RootStack.Screen name="Onboarding" component={OnboardingStack} />
       )}
@@ -184,8 +189,20 @@ export default function RootNavigator() {
     return <SplashAnimationScreen onDone={() => setSplashDone(true)} />;
   }
 
+  const navTheme = {
+    dark: true,
+    colors: {
+      primary: theme.colors.brand,
+      background: theme.colors.bgDeep,
+      card: theme.colors.bgSurface,
+      text: theme.colors.textPrimary,
+      border: theme.colors.borderDefault,
+      notification: theme.colors.accent,
+    },
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navTheme}>
       {authState ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );
