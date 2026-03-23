@@ -1,18 +1,13 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { theme } from '../../theme';
 
 export default function Card({ children, glass, style }) {
   if (glass) {
     return (
-      <BlurView
-        intensity={55}
-        tint="light"
-        style={[styles.card, styles.glassBlur, theme.shadows.card, style]}
-      >
+      <View style={[styles.card, styles.glassBlur, theme.shadows.card, style]}>
         {children}
-      </BlurView>
+      </View>
     );
   }
 

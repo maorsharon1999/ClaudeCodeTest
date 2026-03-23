@@ -1,6 +1,5 @@
 import React, { useRef } from 'react';
 import { View, TouchableOpacity, Text, Animated, StyleSheet, Platform } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../theme';
@@ -63,11 +62,7 @@ export default function CustomTabBar({ state, navigation }) {
   const insets = useSafeAreaInsets();
 
   return (
-    <BlurView
-      intensity={40}
-      tint="light"
-      style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) }]}
-    >
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       <View style={styles.bar}>
         {TAB_CONFIG.map((config, index) => (
           <TabButton
@@ -88,12 +83,13 @@ export default function CustomTabBar({ state, navigation }) {
           />
         ))}
       </View>
-    </BlurView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
     borderTopWidth: 1,
     borderTopColor: theme.colors.borderDefault,
     shadowColor: '#0050A0',
