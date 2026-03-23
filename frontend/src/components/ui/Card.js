@@ -1,17 +1,23 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { theme } from '../../theme';
 
 export default function Card({ children, glass, style }) {
+  if (glass) {
+    return (
+      <BlurView
+        intensity={55}
+        tint="light"
+        style={[styles.card, styles.glassBlur, theme.shadows.card, style]}
+      >
+        {children}
+      </BlurView>
+    );
+  }
+
   return (
-    <View
-      style={[
-        styles.card,
-        theme.shadows.card,
-        glass && styles.glass,
-        style,
-      ]}
-    >
+    <View style={[styles.card, theme.shadows.card, style]}>
       {children}
     </View>
   );
@@ -24,8 +30,10 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: theme.colors.borderDefault,
+    overflow: 'hidden',
   },
-  glass: {
-    backgroundColor: theme.colors.bgGlass,
+  glassBlur: {
+    backgroundColor: 'rgba(255,255,255,0.60)',
+    borderColor: 'rgba(0,114,206,0.12)',
   },
 });

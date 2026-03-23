@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, StyleSheet, Animated, Easing } from 'react-native';
+import { View, StyleSheet, Animated, Easing, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as SplashScreen from 'expo-splash-screen';
@@ -13,14 +13,14 @@ import MainTabNavigator from './MainTabNavigator';
 const AuthStack = createNativeStackNavigator();
 const RootStack = createNativeStackNavigator();
 
-const darkScreenOptions = {
+const screenOptions = {
   headerShown: false,
   contentStyle: { backgroundColor: theme.colors.bgDeep },
 };
 
 function AuthNavigator() {
   return (
-    <AuthStack.Navigator screenOptions={darkScreenOptions}>
+    <AuthStack.Navigator screenOptions={screenOptions}>
       <AuthStack.Screen name="EmailLogin" component={EmailLoginScreen} />
     </AuthStack.Navigator>
   );
@@ -30,7 +30,7 @@ function AppNavigator() {
   const { profileComplete } = useAuth();
 
   return (
-    <RootStack.Navigator screenOptions={darkScreenOptions}>
+    <RootStack.Navigator screenOptions={screenOptions}>
       {!profileComplete && (
         <RootStack.Screen name="Onboarding" component={OnboardingStack} />
       )}
@@ -190,7 +190,7 @@ export default function RootNavigator() {
   }
 
   const navTheme = {
-    dark: true,
+    dark: false,
     colors: {
       primary: theme.colors.brand,
       background: theme.colors.bgDeep,
@@ -203,13 +203,14 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer theme={navTheme}>
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.bgDeep} />
       {authState ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Styles — dark themed
+// Styles — light themed
 // ---------------------------------------------------------------------------
 const splashStyles = StyleSheet.create({
   container: {

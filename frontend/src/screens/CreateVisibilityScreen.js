@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconBoxSelected: {
-    backgroundColor: 'rgba(123,97,255,0.2)',
+    backgroundColor: 'rgba(0,114,206,0.15)',
   },
   cardText: {
     flex: 1,

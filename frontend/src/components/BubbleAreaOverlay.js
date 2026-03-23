@@ -1,10 +1,10 @@
 import React from 'react';
 import { Circle, Polygon } from 'react-native-maps';
 
-const FILL_DEFAULT = 'rgba(123,97,255,0.08)';
-const FILL_SELECTED = 'rgba(123,97,255,0.18)';
-const STROKE_DEFAULT = 'rgba(123,97,255,0.35)';
-const STROKE_SELECTED = 'rgba(123,97,255,0.6)';
+const FILL_DEFAULT = 'rgba(0,114,206,0.08)';
+const FILL_SELECTED = 'rgba(0,114,206,0.18)';
+const STROKE_DEFAULT = 'rgba(0,114,206,0.35)';
+const STROKE_SELECTED = 'rgba(0,114,206,0.6)';
 const STROKE_WIDTH = 2;
 
 // Ensure shape_coords is a parsed array (may arrive as JSON string)

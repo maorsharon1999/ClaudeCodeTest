@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import MapView, { Marker, Circle, Polygon, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
-import mapDarkStyle from '../components/MapDarkStyle.json';
 import { theme } from '../theme';
 import { fadeInUp, fadeInUpStyle } from '../utils/animations';
 
@@ -19,10 +18,10 @@ const MAX_PLACEMENT_RADIUS = 1000; // 1 km from user location
 const MAX_POLYGON_VERTICES = 20;
 const CLOSE_THRESHOLD_M = 80; // easier to close polygon on mobile
 
-const FILL_COLOR = 'rgba(123,97,255,0.12)';
-const STROKE_COLOR = 'rgba(123,97,255,0.5)';
-const BOUNDARY_COLOR = 'rgba(255,255,255,0.12)';
-const BOUNDARY_STROKE = 'rgba(255,255,255,0.25)';
+const FILL_COLOR = 'rgba(0,114,206,0.12)';
+const STROKE_COLOR = 'rgba(0,114,206,0.55)';
+const BOUNDARY_COLOR = 'rgba(0,114,206,0.08)';
+const BOUNDARY_STROKE = 'rgba(0,114,206,0.20)';
 
 function haversineM(lat1, lng1, lat2, lng2) {
   const toRad = d => (d * Math.PI) / 180;
@@ -239,7 +238,6 @@ export default function CreateAreaScreen({ navigation, route }) {
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
-        customMapStyle={mapDarkStyle}
         initialRegion={{
           ...userCoord,
           latitudeDelta: 0.02,    // wider zoom to see ~1km
@@ -479,7 +477,7 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
   },
   edgeHandle: {
-    backgroundColor: 'rgba(10,10,20,0.85)',
+    backgroundColor: 'rgba(255,255,255,0.88)',
     borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -511,7 +509,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   hintText: {
-    backgroundColor: 'rgba(10,10,20,0.82)',
+    backgroundColor: 'rgba(255,255,255,0.82)',
     color: theme.colors.textSecondary,
     fontSize: 12,
     paddingHorizontal: 14,

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, View, Image, Text, StyleSheet, Platform } from 'react-native';
 
-const BRAND_PURPLE = '#7B61FF';
+const BRAND_BLUE = '#0072CE';
 const SELF_TEAL = '#00C9A7';
 
 export default function UserPhotoMarker({ photoUrl, name, isCurrentUser = false, size = 48 }) {
@@ -27,7 +27,7 @@ export default function UserPhotoMarker({ photoUrl, name, isCurrentUser = false,
     return () => loop.stop();
   }, []);
 
-  const ringColor = isCurrentUser ? SELF_TEAL : BRAND_PURPLE;
+  const ringColor = isCurrentUser ? SELF_TEAL : BRAND_BLUE;
   const ringWidth = 3;
   const innerBorder = 1.5;
   const total = size + (ringWidth + innerBorder) * 2;
@@ -49,7 +49,7 @@ export default function UserPhotoMarker({ photoUrl, name, isCurrentUser = false,
             borderWidth: ringWidth,
             borderColor: ringColor,
           },
-          isCurrentUser ? styles.shadowTeal : styles.shadowPurple,
+          isCurrentUser ? styles.shadowTeal : styles.shadowBlue,
         ]}
       >
         <View
@@ -84,9 +84,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ring: {},
-  shadowPurple: Platform.select({
+  shadowBlue: Platform.select({
     ios: {
-      shadowColor: BRAND_PURPLE,
+      shadowColor: BRAND_BLUE,
       shadowOffset: { width: 0, height: 3 },
       shadowOpacity: 0.4,
       shadowRadius: 6,

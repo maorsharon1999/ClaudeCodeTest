@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: 'rgba(123,97,255,0.12)',
+    backgroundColor: 'rgba(0,114,206,0.12)',
   },
   iconCircle: {
     width: 38,

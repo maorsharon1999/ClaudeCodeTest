@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: 'rgba(123,97,255,0.1)',
+    backgroundColor: 'rgba(0,114,206,0.08)',
   },
   title: {
     ...theme.typography.displayLg,

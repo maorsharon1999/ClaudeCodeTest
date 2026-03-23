@@ -21,7 +21,6 @@ import BubbleAreaOverlay from '../components/BubbleAreaOverlay';
 import BubbleAreaMarker from '../components/BubbleAreaMarker';
 import UserPhotoMarker from '../components/UserPhotoMarker';
 import BubblePeekCard from '../components/BubblePeekCard';
-import mapDarkStyle from '../components/MapDarkStyle.json';
 import { IconButton } from '../components/ui';
 import { pulseLoop } from '../utils/animations';
 import { resolvePhotoUrl } from '../lib/photoUrl';
@@ -197,7 +196,6 @@ export default function RadarHomeScreen({ navigation }) {
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
-        customMapStyle={mapDarkStyle}
         initialRegion={{
           ...myLocation,
           latitudeDelta: 0.018,
@@ -458,7 +456,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.pill,
     borderWidth: 1,
     borderColor: theme.colors.borderDefault,
-    backgroundColor: 'rgba(10,10,20,0.82)',
+    backgroundColor: 'rgba(255,255,255,0.82)',
   },
   filterChipActive: {
     borderColor: theme.colors.brand,
