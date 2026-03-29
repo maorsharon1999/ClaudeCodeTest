@@ -131,7 +131,10 @@ export default function UserPhotoMarker({ photoUrl, name, isCurrentUser = false,
   const innerBorder = 1.5;
   const total = size + (ringWidth + innerBorder) * 2;
   const innerSize = total - ringWidth * 2;
-  const bubbleRingSize = total + 20; // bubble ring sits outside the photo
+  const bubbleRingSize = total + 24;
+  // Wrapper must be large enough to contain max scaled ring (1.22x) without clipping
+  const maxScale = 1.25;
+  const wrapperSize = Math.ceil(bubbleRingSize * maxScale) + 4;
 
   const initials = name
     ? name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -143,7 +146,7 @@ export default function UserPhotoMarker({ photoUrl, name, isCurrentUser = false,
   });
 
   return (
-    <View style={[styles.outerWrapper, { width: bubbleRingSize + 8, height: bubbleRingSize + 8 }]}>
+    <View style={[styles.outerWrapper, { width: wrapperSize, height: wrapperSize }]}>
       {/* Animated bubble ring behind the photo */}
       <Animated.View
         style={[
@@ -228,13 +231,11 @@ const styles = StyleSheet.create({
   },
   bubbleRing: {
     position: 'absolute',
-    borderWidth: 2,
-    borderStyle: 'dashed',
+    borderWidth: 2.5,
   },
   bubbleRingInner: {
     position: 'absolute',
     borderWidth: 1.5,
-    borderStyle: 'dotted',
   },
   wrapper: {
     alignItems: 'center',
