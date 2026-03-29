@@ -6,11 +6,10 @@ const SELF_TEAL = '#00C9A7';
 
 export default function UserPhotoMarker({ photoUrl, name, isCurrentUser = false, size = 48 }) {
   const breathe = useRef(new Animated.Value(1)).current;
-  const bubbleScale = useRef(new Animated.Value(0.8)).current;
-  const bubbleOpacity = useRef(new Animated.Value(0.6)).current;
-  const bubbleRotate = useRef(new Animated.Value(0)).current;
+  const bubbleScale = useRef(new Animated.Value(0.85)).current;
+  const bubbleOpacity = useRef(new Animated.Value(0.5)).current;
   const ring2Scale = useRef(new Animated.Value(0.9)).current;
-  const ring2Opacity = useRef(new Animated.Value(0.3)).current;
+  const ring2Opacity = useRef(new Animated.Value(0.25)).current;
   const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
@@ -32,7 +31,7 @@ export default function UserPhotoMarker({ photoUrl, name, isCurrentUser = false,
     return () => loop.stop();
   }, []);
 
-  // Animated bubble ring: scales in/out and rotates continuously
+  // Animated bubble pulse — useNativeDriver: false so map marker bitmap re-captures
   useEffect(() => {
     const pulseLoop = Animated.loop(
       Animated.sequence([
@@ -40,13 +39,13 @@ export default function UserPhotoMarker({ photoUrl, name, isCurrentUser = false,
           toValue: 1.15,
           duration: 2400,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(bubbleScale, {
-          toValue: 0.85,
+          toValue: 0.9,
           duration: 2400,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ])
     );
@@ -54,43 +53,33 @@ export default function UserPhotoMarker({ photoUrl, name, isCurrentUser = false,
     const opacityLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(bubbleOpacity, {
-          toValue: 0.25,
+          toValue: 0.3,
           duration: 2400,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(bubbleOpacity, {
-          toValue: 0.6,
+          toValue: 0.8,
           duration: 2400,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ])
     );
 
-    const rotateLoop = Animated.loop(
-      Animated.timing(bubbleRotate, {
-        toValue: 1,
-        duration: 8000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    );
-
-    // Second ring animations (offset timing for organic feel)
     const ring2PulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(ring2Scale, {
-          toValue: 1.22,
-          duration: 3000,
+          toValue: 1.25,
+          duration: 3200,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(ring2Scale, {
-          toValue: 0.9,
-          duration: 3000,
+          toValue: 0.95,
+          duration: 3200,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ])
     );
@@ -98,95 +87,80 @@ export default function UserPhotoMarker({ photoUrl, name, isCurrentUser = false,
     const ring2OpacityLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(ring2Opacity, {
-          toValue: 0.12,
-          duration: 3000,
+          toValue: 0.15,
+          duration: 3200,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(ring2Opacity, {
-          toValue: 0.35,
-          duration: 3000,
+          toValue: 0.5,
+          duration: 3200,
           easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ])
     );
 
     pulseLoop.start();
     opacityLoop.start();
-    rotateLoop.start();
     ring2PulseLoop.start();
     ring2OpacityLoop.start();
     return () => {
       pulseLoop.stop();
       opacityLoop.stop();
-      rotateLoop.stop();
       ring2PulseLoop.stop();
       ring2OpacityLoop.stop();
     };
   }, []);
 
   const ringColor = isCurrentUser ? SELF_TEAL : BRAND_BLUE;
+  // Semi-transparent fill colors (no borders — Android renders circle borders as quarter arcs)
+  const bubbleFill = isCurrentUser ? 'rgba(0,201,167,0.25)' : 'rgba(0,114,206,0.25)';
+  const bubbleFill2 = isCurrentUser ? 'rgba(0,201,167,0.18)' : 'rgba(0,114,206,0.18)';
+
   const ringWidth = 3;
   const innerBorder = 1.5;
   const total = size + (ringWidth + innerBorder) * 2;
   const innerSize = total - ringWidth * 2;
-  const bubbleRingSize = total + 24;
-  // Wrapper must be large enough to contain max scaled ring (1.22x) without clipping
-  const maxScale = 1.25;
-  const wrapperSize = Math.ceil(bubbleRingSize * maxScale) + 4;
+  const bubbleSize = total + 24;
+  const bubble2Size = total + 36;
+  // Wrapper sized for largest bubble at max scale
+  const wrapperSize = Math.ceil(bubble2Size * 1.25);
 
   const initials = name
     ? name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
     : '?';
 
-  const spin = bubbleRotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-
-  // Center offsets for absolute-positioned rings
-  const ring1Offset = (wrapperSize - bubbleRingSize) / 2;
-  const ring2Size = bubbleRingSize - 6;
-  const ring2Offset = (wrapperSize - ring2Size) / 2;
-
   return (
     <View style={[styles.outerWrapper, { width: wrapperSize, height: wrapperSize }]}>
-      {/* Animated bubble ring behind the photo */}
+      {/* Outer animated bubble — filled circle, no border */}
       <Animated.View
-        style={[
-          styles.bubbleRing,
-          {
-            top: ring1Offset,
-            left: ring1Offset,
-            width: bubbleRingSize,
-            height: bubbleRingSize,
-            borderRadius: bubbleRingSize / 2,
-            borderColor: ringColor,
-            opacity: bubbleOpacity,
-            transform: [{ scale: bubbleScale }, { rotate: spin }],
-          },
-        ]}
+        style={{
+          position: 'absolute',
+          top: (wrapperSize - bubble2Size) / 2,
+          left: (wrapperSize - bubble2Size) / 2,
+          width: bubble2Size,
+          height: bubble2Size,
+          borderRadius: bubble2Size / 2,
+          backgroundColor: bubbleFill2,
+          opacity: ring2Opacity,
+          transform: [{ scale: ring2Scale }],
+        }}
         pointerEvents="none"
       />
-      {/* Second offset bubble ring for organic feel */}
+      {/* Inner animated bubble — filled circle, no border */}
       <Animated.View
-        style={[
-          styles.bubbleRingInner,
-          {
-            top: ring2Offset,
-            left: ring2Offset,
-            width: ring2Size,
-            height: ring2Size,
-            borderRadius: ring2Size / 2,
-            borderColor: ringColor,
-            opacity: ring2Opacity,
-            transform: [
-              { scale: ring2Scale },
-              { rotate: spin },
-            ],
-          },
-        ]}
+        style={{
+          position: 'absolute',
+          top: (wrapperSize - bubbleSize) / 2,
+          left: (wrapperSize - bubbleSize) / 2,
+          width: bubbleSize,
+          height: bubbleSize,
+          borderRadius: bubbleSize / 2,
+          backgroundColor: bubbleFill,
+          opacity: bubbleOpacity,
+          transform: [{ scale: bubbleScale }],
+        }}
         pointerEvents="none"
       />
 
@@ -237,14 +211,6 @@ const styles = StyleSheet.create({
   outerWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  bubbleRing: {
-    position: 'absolute',
-    borderWidth: 2.5,
-  },
-  bubbleRingInner: {
-    position: 'absolute',
-    borderWidth: 1.5,
   },
   wrapper: {
     alignItems: 'center',
