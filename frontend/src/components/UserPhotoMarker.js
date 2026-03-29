@@ -145,6 +145,11 @@ export default function UserPhotoMarker({ photoUrl, name, isCurrentUser = false,
     outputRange: ['0deg', '360deg'],
   });
 
+  // Center offsets for absolute-positioned rings
+  const ring1Offset = (wrapperSize - bubbleRingSize) / 2;
+  const ring2Size = bubbleRingSize - 6;
+  const ring2Offset = (wrapperSize - ring2Size) / 2;
+
   return (
     <View style={[styles.outerWrapper, { width: wrapperSize, height: wrapperSize }]}>
       {/* Animated bubble ring behind the photo */}
@@ -152,6 +157,8 @@ export default function UserPhotoMarker({ photoUrl, name, isCurrentUser = false,
         style={[
           styles.bubbleRing,
           {
+            top: ring1Offset,
+            left: ring1Offset,
             width: bubbleRingSize,
             height: bubbleRingSize,
             borderRadius: bubbleRingSize / 2,
@@ -167,9 +174,11 @@ export default function UserPhotoMarker({ photoUrl, name, isCurrentUser = false,
         style={[
           styles.bubbleRingInner,
           {
-            width: bubbleRingSize - 6,
-            height: bubbleRingSize - 6,
-            borderRadius: (bubbleRingSize - 6) / 2,
+            top: ring2Offset,
+            left: ring2Offset,
+            width: ring2Size,
+            height: ring2Size,
+            borderRadius: ring2Size / 2,
             borderColor: ringColor,
             opacity: ring2Opacity,
             transform: [
