@@ -114,6 +114,18 @@ export default function RadarHomeScreen({ navigation }) {
     return () => anim.stop();
   }, [myLocation, pulseAnim]);
 
+  // Auto-center map on user location once loaded
+  useEffect(() => {
+    if (!myLocation || !mapRef.current) return;
+    const timer = setTimeout(() => {
+      mapRef.current?.animateToRegion(
+        { ...myLocation, latitudeDelta: 0.012, longitudeDelta: 0.012 },
+        600
+      );
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [myLocation]);
+
   async function fetchBubbles(lat, lng) {
     try {
       const result = await getNearbyBubbles(lat, lng);
@@ -176,7 +188,7 @@ export default function RadarHomeScreen({ navigation }) {
   function centerOnMe() {
     if (!myLocation) return;
     mapRef.current?.animateToRegion(
-      { ...myLocation, latitudeDelta: 0.018, longitudeDelta: 0.018 },
+      { ...myLocation, latitudeDelta: 0.012, longitudeDelta: 0.012 },
       400
     );
   }
@@ -218,7 +230,7 @@ export default function RadarHomeScreen({ navigation }) {
         <Marker
           coordinate={myLocation}
           anchor={{ x: 0.5, y: 0.5 }}
-          tracksViewChanges={false}
+          tracksViewChanges={true}
           zIndex={10}
         >
           <UserPhotoMarker
@@ -238,7 +250,7 @@ export default function RadarHomeScreen({ navigation }) {
               longitude: u.lng,
             }}
             anchor={{ x: 0.5, y: 0.5 }}
-            tracksViewChanges={false}
+            tracksViewChanges={true}
             zIndex={5}
           >
             <UserPhotoMarker
