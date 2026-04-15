@@ -6,6 +6,15 @@
     "production": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://bubble-backend-782707450109.us-central1.run.app/api/v1",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyCZ61NHglKjwsHS7tqpVZ0Ebt4HiPQNIAA",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "bubble-b6e04.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "bubble-b6e04",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "bubble-b6e04.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "782707450109",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:782707450109:web:6b52097cf0921034d11e94"
       }
     }
   }
