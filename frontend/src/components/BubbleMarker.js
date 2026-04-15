@@ -7,7 +7,7 @@ const INNER_BORDER = 1.5;
 const TOTAL = SIZE + (RING + INNER_BORDER) * 2;
 
 // Brand colors
-const BRAND_PURPLE = '#6C47FF';
+const BRAND_BLUE = '#0072CE';
 const SELF_TEAL = '#00C9A7';
 
 export default function BubbleMarker({ photoUrl, name, isCurrentUser = false }) {
@@ -40,8 +40,8 @@ export default function BubbleMarker({ photoUrl, name, isCurrentUser = false }) 
         .toUpperCase()
     : '?';
 
-  const ringColor = isCurrentUser ? SELF_TEAL : BRAND_PURPLE;
-  const pinColor = isCurrentUser ? SELF_TEAL : BRAND_PURPLE;
+  const ringColor = isCurrentUser ? SELF_TEAL : BRAND_BLUE;
+  const pinColor = isCurrentUser ? SELF_TEAL : BRAND_BLUE;
 
   return (
     <Animated.View style={[styles.wrapper, { transform: [{ scale: pulse }] }]}>
@@ -50,7 +50,7 @@ export default function BubbleMarker({ photoUrl, name, isCurrentUser = false }) 
         style={[
           styles.ring,
           { borderColor: ringColor },
-          isCurrentUser ? styles.shadowTeal : styles.shadowPurple,
+          isCurrentUser ? styles.shadowTeal : styles.shadowBlue,
         ]}
       >
         {/* White inner border layer */}
@@ -96,9 +96,9 @@ const styles = StyleSheet.create({
     // shadow applied via conditional style below
   },
 
-  shadowPurple: Platform.select({
+  shadowBlue: Platform.select({
     ios: {
-      shadowColor: BRAND_PURPLE,
+      shadowColor: BRAND_BLUE,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.45,
       shadowRadius: 8,

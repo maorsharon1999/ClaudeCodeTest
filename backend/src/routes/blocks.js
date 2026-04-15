@@ -1,6 +1,7 @@
 'use strict';
 const express    = require('express');
 const rateLimit  = require('express-rate-limit');
+const pool       = require('../db/pool');
 const { authRequired } = require('../middleware/auth');
 const { blockUser, unblockUser } = require('../services/blockReportService');
 
@@ -19,7 +20,7 @@ const blockLimiter = rateLimit({
 // GET / — list blocked users with their profile info
 router.get('/', async (req, res, next) => {
   try {
-    const { rows } = await require('../db/pool').query(
+    const { rows } = await pool.query(
       `SELECT b.blocked_id, p.display_name, p.photos
        FROM blocks b
        LEFT JOIN profiles p ON p.user_id = b.blocked_id

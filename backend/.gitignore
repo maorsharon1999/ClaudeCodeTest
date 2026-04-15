@@ -1,3 +1,10 @@
 node_modules/
 .env
 *.log
+# Firebase service account key files — never commit
+*-service-account*.json
+firebase-adminsdk*.json
+serviceAccountKey.json
+# Deployment secret files — never commit
+deploy-env.sh
+firebase-sa-minified.tmp

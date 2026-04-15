@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,15 @@ import {
   StyleSheet,
   Alert,
   Linking,
-  Platform,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { getProfile } from '../api/profile';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../theme';
+import { Header } from '../components/ui';
+import { fadeInUp, fadeInUpStyle } from '../utils/animations';
 
 const APP_VERSION = '1.0.0';
 const PRIVACY_POLICY_URL = 'https://example.com/privacy';
@@ -23,12 +26,24 @@ function SectionHeader({ title }) {
   return <Text style={styles.sectionHeader}>{title}</Text>;
 }
 
-function Row({ label, value, onPress, destructive }) {
+function Row({ label, value, onPress, destructive, icon }) {
   const content = (
     <View style={styles.row}>
-      <Text style={[styles.rowLabel, destructive && styles.destructiveLabel]}>{label}</Text>
+      <View style={styles.rowLeft}>
+        {icon ? (
+          <Ionicons
+            name={icon}
+            size={18}
+            color={destructive ? theme.colors.error : theme.colors.textSecondary}
+            style={styles.rowIcon}
+          />
+        ) : null}
+        <Text style={[styles.rowLabel, destructive && styles.destructiveLabel]}>{label}</Text>
+      </View>
       {value != null && <Text style={styles.rowValue}>{value}</Text>}
-      {onPress && !value && <Text style={styles.rowChevron}>›</Text>}
+      {onPress && value == null && (
+        <Ionicons name="chevron-forward" size={16} color={theme.colors.textFaint} />
+      )}
     </View>
   );
   if (!onPress) return content;
@@ -39,7 +54,7 @@ function Row({ label, value, onPress, destructive }) {
   );
 }
 
-function Divider() {
+function RowDivider() {
   return <View style={styles.divider} />;
 }
 
@@ -47,6 +62,11 @@ export default function SettingsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { signOut, deleteAccount } = useAuth();
   const [displayName, setDisplayName] = useState('');
+
+  const enterAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    fadeInUp(enterAnim).start();
+  }, []);
 
   useEffect(() => {
     getProfile()
@@ -64,7 +84,7 @@ export default function SettingsScreen({ navigation }) {
   function handleDeleteAccount() {
     Alert.alert(
       'Delete Account',
-      'This permanently deletes your profile, chats, and all data. This cannot be undone.',
+      'This permanently deletes your profile and all data. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -83,71 +103,100 @@ export default function SettingsScreen({ navigation }) {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
-    >
-      <SectionHeader title="PROFILE" />
-      <View style={styles.section}>
-        <Row label="Edit Profile" onPress={() => navigation.navigate('ProfileEdit')} />
-        <Divider />
-        <Row label="Name" value={displayName || '—'} />
-      </View>
-
-      <SectionHeader title="PRIVACY" />
-      <View style={styles.section}>
-        <Row label="App always opens invisible" value="On" />
-      </View>
-
-      <SectionHeader title="SAFETY" />
-      <View style={styles.section}>
-        <Row label="Blocked Users" onPress={() => navigation.navigate('BlockedUsers')} />
-        <Divider />
-        <Row
-          label="Report a Problem"
-          onPress={() => Linking.openURL(`mailto:support@bubble.app?subject=Problem%20Report`)}
-        />
-      </View>
-
-      <SectionHeader title="ABOUT" />
-      <View style={styles.section}>
-        <Row label="Privacy Policy" onPress={() => Linking.openURL(PRIVACY_POLICY_URL)} />
-        <Divider />
-        <Row label="Terms of Service" onPress={() => Linking.openURL(TERMS_URL)} />
-        <Divider />
-        <Row
-          label="Send Feedback"
-          onPress={() => Linking.openURL(`mailto:${FEEDBACK_EMAIL}?subject=Feedback`)}
-        />
-        <Divider />
-        <Row label="Version" value={APP_VERSION} />
-      </View>
-
-      <SectionHeader title="ACCOUNT" />
-      <View style={styles.section}>
-        <TouchableOpacity onPress={handleSignOut} accessibilityRole="button">
-          <View style={styles.row}>
-            <Text style={styles.actionLabel}>Sign Out</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity
-        style={styles.deleteBtn}
-        onPress={handleDeleteAccount}
-        accessibilityRole="button"
-        accessibilityLabel="Delete account"
+    <View style={styles.screen}>
+      <Header title="Settings" onBack={() => navigation.goBack()} />
+      <Animated.ScrollView
+        style={[styles.container, fadeInUpStyle(enterAnim)]}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
       >
-        <Text style={styles.deleteBtnText}>Delete Account</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <SectionHeader title="PROFILE" />
+        <View style={styles.section}>
+          <Row
+            label="Edit Profile"
+            icon="person-outline"
+            onPress={() => navigation.navigate('ProfileEdit')}
+          />
+          <RowDivider />
+          <Row label="Name" icon="text-outline" value={displayName || '—'} />
+        </View>
+
+        <SectionHeader title="SAFETY" />
+        <View style={styles.section}>
+          <Row
+            label="Blocked Users"
+            icon="shield-outline"
+            onPress={() => navigation.navigate('BlockedUsers')}
+          />
+          <RowDivider />
+          <Row
+            label="Report a Problem"
+            icon="mail-outline"
+            onPress={() => Linking.openURL(`mailto:support@bubble.app?subject=Problem%20Report`)}
+          />
+        </View>
+
+        <SectionHeader title="ABOUT" />
+        <View style={styles.section}>
+          <Row
+            label="Privacy Policy"
+            icon="document-outline"
+            onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+          />
+          <RowDivider />
+          <Row
+            label="Terms of Service"
+            icon="document-text-outline"
+            onPress={() => Linking.openURL(TERMS_URL)}
+          />
+          <RowDivider />
+          <Row
+            label="Send Feedback"
+            icon="chatbubble-outline"
+            onPress={() => Linking.openURL(`mailto:${FEEDBACK_EMAIL}?subject=Feedback`)}
+          />
+          <RowDivider />
+          <Row label="Version" icon="information-circle-outline" value={APP_VERSION} />
+        </View>
+
+        <SectionHeader title="ACCOUNT" />
+        <View style={styles.section}>
+          <TouchableOpacity onPress={handleSignOut} accessibilityRole="button">
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <Ionicons
+                  name="log-out-outline"
+                  size={18}
+                  color={theme.colors.brand}
+                  style={styles.rowIcon}
+                />
+                <Text style={styles.actionLabel}>Sign Out</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={styles.deleteBtn}
+          onPress={handleDeleteAccount}
+          accessibilityRole="button"
+          accessibilityLabel="Delete account"
+        >
+          <Ionicons name="trash-outline" size={16} color={theme.colors.error} style={{ marginRight: 8 }} />
+          <Text style={styles.deleteBtnText}>Delete Account</Text>
+        </TouchableOpacity>
+      </Animated.ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.bgDeep,
+  },
   container: {
     flex: 1,
-    backgroundColor: theme.colors.bgWash,
+    backgroundColor: theme.colors.bgDeep,
   },
   sectionHeader: {
     fontSize: 12,
@@ -159,7 +208,7 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   section: {
-    backgroundColor: theme.colors.bgBase,
+    backgroundColor: theme.colors.bgSurface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: theme.colors.borderDefault,
@@ -172,6 +221,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     minHeight: 48,
   },
+  rowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  rowIcon: {
+    marginRight: 12,
+  },
   rowLabel: {
     fontSize: 16,
     color: theme.colors.textPrimary,
@@ -183,26 +240,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.textMuted,
   },
-  rowChevron: {
-    fontSize: 20,
-    color: theme.colors.textFaint,
-  },
   divider: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: theme.colors.borderSubtle,
-    marginLeft: 20,
+    marginLeft: 50,
   },
   actionLabel: {
     fontSize: 16,
     color: theme.colors.brand,
   },
   deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginHorizontal: 20,
     marginTop: 32,
     paddingVertical: 14,
     borderRadius: theme.radii.md,
-    backgroundColor: '#FFF0F0',
-    alignItems: 'center',
+    backgroundColor: 'rgba(255,92,92,0.1)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: theme.colors.error,
   },

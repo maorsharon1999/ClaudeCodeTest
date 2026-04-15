@@ -1,88 +1,111 @@
 'use strict';
 /**
- * Auth route unit tests — mocks PG and Redis so no live DB needed.
+ * Auth route unit tests — mocks PG pool so no live DB needed.
+ * Auth is exclusively Firebase-based; OTP and email/password routes are removed.
  */
-process.env.DATABASE_URL    = 'postgresql://test:test@localhost:5432/test';
-process.env.REDIS_URL        = 'redis://localhost:6379';
-process.env.JWT_ACCESS_SECRET  = 'test-access-secret-long-enough-32chars!';
-process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-long-enough-32!!';
-process.env.PHONE_HMAC_SECRET  = 'test-phone-hmac-secret-long-enough!!!';
-process.env.ADMIN_SECRET       = 'test-admin-secret-long-enough-32chars!';
-process.env.STORAGE_BASE_URL   = 'http://localhost:3000';
+process.env.DATABASE_URL           = 'postgresql://test:test@localhost:5432/test';
+process.env.JWT_ACCESS_SECRET      = 'test-access-secret-long-enough-32chars!';
+process.env.JWT_REFRESH_SECRET     = 'test-refresh-secret-long-enough-32!!';
+process.env.ADMIN_SECRET           = 'test-admin-secret-long-enough-32chars!';
+process.env.FIREBASE_PROJECT_ID    = 'test-project';
+process.env.FIREBASE_STORAGE_BUCKET = 'test-project.appspot.com';
 
 const request = require('supertest');
-const bcrypt  = require('bcrypt');
+const jwt     = require('jsonwebtoken');
 
 // --- Mock pg pool ---
 jest.mock('../db/pool', () => {
-  const rows = {};
+  const store = { revokedJtis: new Set() };
   const query = jest.fn(async (sql, params) => {
-    // requestOtp: INSERT into otp_attempts
-    if (sql.includes('INSERT INTO otp_attempts')) {
-      rows['otp'] = { id: params[0], phone_hash: params[1], code_hash: params[2], expires_at: params[3], attempt_count: 0, verified: false };
-      return { rows: [rows['otp']] };
-    }
-    // verifyOtp: SELECT otp
-    if (sql.includes('SELECT id, code_hash')) {
-      if (!rows['otp'] || rows['otp'].verified) return { rows: [] };
-      return { rows: [rows['otp']] };
-    }
-    // verifyOtp: UPDATE attempt_count
-    if (sql.includes('attempt_count = attempt_count + 1')) {
-      rows['otp'].attempt_count += 1;
+    if (sql.includes('INSERT INTO revoked_tokens')) {
+      store.revokedJtis.add(params[0]);
       return { rows: [] };
     }
-    // verifyOtp: UPDATE verified
-    if (sql.includes('verified = TRUE')) {
-      rows['otp'].verified = true;
-      return { rows: [] };
+    if (sql.includes('FROM revoked_tokens')) {
+      return { rows: store.revokedJtis.has(params[0]) ? [{ 1: 1 }] : [] };
     }
-    // upsert user
-    if (sql.includes('INSERT INTO users')) {
-      return { rows: [{ id: 'mock-user-uuid' }] };
-    }
-    // upsert visibility
-    if (sql.includes('INSERT INTO visibility_states')) {
-      return { rows: [] };
+    if (sql.includes('SELECT banned_at FROM users')) {
+      return { rows: [{ banned_at: null }] };
     }
     return { rows: [] };
   });
   return { query };
 });
 
-// --- Mock redis ---
-const redisStore = {};
-jest.mock('../db/redis', () => ({
-  getRedis: async () => ({
-    incr: async (key) => { redisStore[key] = (redisStore[key] || 0) + 1; return redisStore[key]; },
-    expire: async () => {},
-    set: async (key, val) => { redisStore[key] = val; },
-    get: async (key) => redisStore[key] || null,
+// --- Mock Firebase Admin so verifyIdToken is controllable ---
+jest.mock('../db/firebase', () => ({
+  getFirebaseAdmin: () => ({
+    auth: () => ({
+      verifyIdToken: jest.fn(async (token) => {
+        if (token === 'valid-firebase-token') {
+          return { uid: 'firebase-uid-001', email: 'user@example.com' };
+        }
+        throw new Error('invalid token');
+      }),
+    }),
   }),
 }));
 
-const app = require('../index');
-
-describe('POST /api/v1/auth/otp/request', () => {
-  it('returns 200 with valid phone', async () => {
-    const res = await request(app).post('/api/v1/auth/otp/request').send({ phone: '+12125550001' });
-    expect(res.status).toBe(200);
-    expect(res.body.message).toBe('OTP sent.');
-  });
-
-  it('returns 400 with missing phone', async () => {
-    const res = await request(app).post('/api/v1/auth/otp/request').send({});
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('VALIDATION_ERROR');
-  });
+// Mock pool for firebase route (findOrCreateByFirebaseUid)
+const pool = require('../db/pool');
+// Override query for firebase-specific selects
+pool.query.mockImplementation(async (sql, params) => {
+  if (sql.includes('SELECT id FROM users WHERE firebase_uid')) {
+    return { rows: [] }; // new user
+  }
+  if (sql.includes('UPDATE users SET firebase_uid')) {
+    return { rows: [] }; // no legacy user to link
+  }
+  if (sql.includes('INSERT INTO users') && sql.includes('firebase_uid')) {
+    return { rows: [{ id: 'mock-user-uuid' }] };
+  }
+  if (sql.includes('INSERT INTO visibility_states')) {
+    return { rows: [] };
+  }
+  if (sql.includes('INSERT INTO revoked_tokens')) {
+    return { rows: [] };
+  }
+  if (sql.includes('FROM revoked_tokens')) {
+    return { rows: [] };
+  }
+  if (sql.includes('SELECT banned_at FROM users')) {
+    return { rows: [{ banned_at: null }] };
+  }
+  // profileService.getProfile
+  if (sql.includes('SELECT') && sql.includes('FROM profiles')) {
+    return { rows: [] };
+  }
+  return { rows: [] };
 });
 
-describe('POST /api/v1/auth/otp/verify', () => {
-  it('returns 400 with missing fields', async () => {
-    // Fails validation before any DB call — no mock setup needed
-    const res = await request(app).post('/api/v1/auth/otp/verify').send({ phone: '+1212' });
+const app = require('../index');
+
+describe('POST /api/v1/auth/firebase/verify', () => {
+  it('returns 400 when id_token is missing', async () => {
+    const res = await request(app).post('/api/v1/auth/firebase/verify').send({});
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 400 when id_token is not a string', async () => {
+    const res = await request(app).post('/api/v1/auth/firebase/verify').send({ id_token: 12345 });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 401 when Firebase rejects the token', async () => {
+    const res = await request(app).post('/api/v1/auth/firebase/verify').send({ id_token: 'bad-token' });
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('FIREBASE_TOKEN_INVALID');
+  });
+
+  it('returns 200 with tokens on valid Firebase ID token', async () => {
+    const res = await request(app).post('/api/v1/auth/firebase/verify').send({ id_token: 'valid-firebase-token' });
+    expect(res.status).toBe(200);
+    expect(res.body.access_token).toBeDefined();
+    expect(res.body.refresh_token).toBeDefined();
+    expect(res.body.user_id).toBe('mock-user-uuid');
+    expect(res.body.is_new_user).toBe(true);
   });
 });
 
@@ -111,46 +134,20 @@ describe('DELETE /api/v1/auth/session', () => {
   });
 });
 
-// --- AC: OTP expires after 10 minutes ---
-describe('verifyOtp with expired OTP', () => {
-  it('returns 400 OTP_NOT_FOUND when OTP row has expires_at in the past', async () => {
-    // The pool mock returns rows:[] when no valid OTP exists — simulate expiry
-    const pool = require('../db/pool');
-    pool.query.mockImplementationOnce(async (sql) => {
-      if (sql.includes('SELECT id, code_hash')) return { rows: [] }; // expired → no row
-    });
-    const res = await request(app)
-      .post('/api/v1/auth/otp/verify')
-      .send({ phone: '+12125550099', code: '000000' });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('OTP_NOT_FOUND');
-  });
-});
-
-// --- AC: 5 wrong attempts locks OTP ---
-describe('verifyOtp lockout after 5 failed attempts', () => {
-  it('returns 429 OTP_LOCKED when attempt_count >= 5', async () => {
-    const pool = require('../db/pool');
-    const lockedHash = await bcrypt.hash('999999', 10);
-    pool.query.mockImplementationOnce(async (sql) => {
-      if (sql.includes('SELECT id, code_hash')) {
-        return { rows: [{ id: 'otp-locked', code_hash: lockedHash, attempt_count: 5, verified: false }] };
-      }
-    });
-    const res = await request(app)
-      .post('/api/v1/auth/otp/verify')
-      .send({ phone: '+12125550099', code: '000000' });
-    expect(res.status).toBe(429);
-    expect(res.body.error.code).toBe('OTP_LOCKED');
-  });
-});
-
-// --- AC: Logout invalidates refresh token; subsequent refresh returns 401 ---
 describe('Refresh token revoked after logout', () => {
-  const jwt = require('jsonwebtoken');
-
   it('returns 401 REFRESH_TOKEN_REVOKED when refresh token used after DELETE /auth/session', async () => {
-    // Issue a real (test-signed) refresh token
+    const revokedStore = new Set();
+    pool.query.mockImplementation(async (sql, params) => {
+      if (sql.includes('INSERT INTO revoked_tokens')) {
+        revokedStore.add(params[0]);
+        return { rows: [] };
+      }
+      if (sql.includes('FROM revoked_tokens')) {
+        return { rows: revokedStore.has(params[0]) ? [{ 1: 1 }] : [] };
+      }
+      return { rows: [] };
+    });
+
     const jti = 'test-jti-logout-001';
     const refreshToken = jwt.sign(
       { sub: 'mock-user-uuid', jti },
@@ -158,17 +155,32 @@ describe('Refresh token revoked after logout', () => {
       { expiresIn: 604800 }
     );
 
-    // Step 1: logout — puts jti in Redis revoked set
     const logoutRes = await request(app)
       .delete('/api/v1/auth/session')
       .send({ refresh_token: refreshToken });
     expect(logoutRes.status).toBe(200);
 
-    // Step 2: attempt refresh — must be rejected
     const refreshRes = await request(app)
       .post('/api/v1/auth/token/refresh')
       .send({ refresh_token: refreshToken });
     expect(refreshRes.status).toBe(401);
     expect(refreshRes.body.error.code).toBe('REFRESH_TOKEN_REVOKED');
+  });
+});
+
+describe('Removed routes return 404', () => {
+  it('POST /api/v1/auth/register returns 404', async () => {
+    const res = await request(app).post('/api/v1/auth/register').send({});
+    expect(res.status).toBe(404);
+  });
+
+  it('POST /api/v1/auth/login returns 404', async () => {
+    const res = await request(app).post('/api/v1/auth/login').send({});
+    expect(res.status).toBe(404);
+  });
+
+  it('POST /api/v1/auth/otp/request returns 404', async () => {
+    const res = await request(app).post('/api/v1/auth/otp/request').send({});
+    expect(res.status).toBe(404);
   });
 });

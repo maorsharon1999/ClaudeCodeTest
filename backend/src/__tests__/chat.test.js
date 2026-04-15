@@ -1,11 +1,10 @@
 'use strict';
-process.env.DATABASE_URL       = 'postgresql://test:test@localhost:5432/test';
-process.env.REDIS_URL          = 'redis://localhost:6379';
-process.env.JWT_ACCESS_SECRET  = 'test-access-secret-long-enough-32chars!';
-process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-long-enough-32!!';
-process.env.PHONE_HMAC_SECRET  = 'test-phone-hmac-secret-long-enough!!!';
-process.env.ADMIN_SECRET       = 'test-admin-secret-long-enough-32chars!';
-process.env.STORAGE_BASE_URL   = 'http://localhost:3000';
+process.env.DATABASE_URL           = 'postgresql://test:test@localhost:5432/test';
+process.env.JWT_ACCESS_SECRET      = 'test-access-secret-long-enough-32chars!';
+process.env.JWT_REFRESH_SECRET     = 'test-refresh-secret-long-enough-32!!';
+process.env.ADMIN_SECRET           = 'test-admin-secret-long-enough-32chars!';
+process.env.FIREBASE_PROJECT_ID    = 'test-project';
+process.env.FIREBASE_STORAGE_BUCKET = 'test-project.appspot.com';
 
 const request = require('supertest');
 const jwt     = require('jsonwebtoken');
@@ -162,6 +161,23 @@ jest.mock('../db/redis', () => ({
     expire: async () => {},
     set: async () => {},
     get: async () => null,
+  }),
+}));
+
+// Mock Firebase Admin so storageService does not attempt real GCS calls.
+jest.mock('../db/firebase', () => ({
+  getFirebaseAdmin: () => ({
+    auth: () => ({
+      verifyIdToken: jest.fn(async () => { throw new Error('not used in chat tests'); }),
+    }),
+    storage: () => ({
+      bucket: () => ({
+        file: () => ({
+          save: jest.fn(async () => {}),
+          getSignedUrl: jest.fn(async () => ['https://storage.googleapis.com/test-bucket/voice/test-file.m4a?sig=test']),
+        }),
+      }),
+    }),
   }),
 }));
 
@@ -665,51 +681,6 @@ describe('POST /api/v1/threads/:id/voice-notes', () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// GET /voice-notes/:filename — authenticated audio stream
-// ---------------------------------------------------------------------------
-describe('GET /voice-notes/:filename', () => {
-  it('returns 401 with no token', async () => {
-    const res = await request(app).get('/voice-notes/sample.m4a');
-    expect(res.status).toBe(401);
-  });
-
-  it('returns 401 with an invalid Bearer token', async () => {
-    const res = await request(app)
-      .get('/voice-notes/sample.m4a')
-      .set('Authorization', 'Bearer totally.invalid.token');
-    expect(res.status).toBe(401);
-  });
-
-  it('returns 401 with an invalid ?token= query param', async () => {
-    const res = await request(app).get('/voice-notes/sample.m4a?token=bad.token.here');
-    expect(res.status).toBe(401);
-  });
-
-  it('returns 200 or 404 (not 401) with valid Bearer token', async () => {
-    const res = await request(app)
-      .get('/voice-notes/sample.m4a')
-      .set('Authorization', `Bearer ${makeAccessToken()}`);
-    // File does not exist on disk in test env → 404, but auth passed (not 401)
-    expect([200, 404]).toContain(res.status);
-  });
-
-  it('returns 200 or 404 (not 401) with valid ?token= query param', async () => {
-    const res = await request(app)
-      .get(`/voice-notes/sample.m4a?token=${makeAccessToken()}`);
-    // File does not exist on disk in test env → 404, but auth passed (not 401)
-    expect([200, 404]).toContain(res.status);
-  });
-
-  it('returns 400 INVALID_FILENAME for path-traversal filename (encoded slash)', async () => {
-    // ..%2Fsecret decodes to ../secret which contains / — rejected by the safe-char regex
-    const res = await request(app)
-      .get('/voice-notes/..%2Fsecret')
-      .set('Authorization', `Bearer ${makeAccessToken()}`);
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe('INVALID_FILENAME');
-  });
-});
 
 describe('POST|DELETE /internal/users/:id/ban', () => {
   it('POST returns 401 without admin token', async () => {

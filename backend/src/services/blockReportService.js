@@ -1,14 +1,6 @@
 'use strict';
 const pool = require('../db/pool');
-
-function makeError(status, code, message) {
-  const err = new Error(message);
-  err.status = status;
-  err.code = code;
-  return err;
-}
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const { makeError, UUID_RE } = require('../utils/errors');
 
 async function blockUser(blockerId, blockedId) {
   if (!blockedId) {
@@ -20,16 +12,16 @@ async function blockUser(blockerId, blockedId) {
   if (!UUID_RE.test(blockedId)) {
     throw makeError(400, 'VALIDATION_ERROR', 'Invalid user ID format.');
   }
-  // Require an approved signal between the pair
+  // Require shared bubble membership (current or past) between the pair
   const relResult = await pool.query(
-    `SELECT 1 FROM signals
-     WHERE ((sender_id = $1 AND recipient_id = $2) OR (sender_id = $2 AND recipient_id = $1))
-       AND state = 'approved'
+    `SELECT 1 FROM bubble_members bm1
+     JOIN bubble_members bm2 ON bm1.bubble_id = bm2.bubble_id
+     WHERE bm1.user_id = $1 AND bm2.user_id = $2
      LIMIT 1`,
     [blockerId, blockedId]
   );
   if (relResult.rows.length === 0) {
-    throw makeError(403, 'FORBIDDEN', 'You can only block users you have matched with.');
+    throw makeError(403, 'FORBIDDEN', 'You can only block users you have shared a bubble with.');
   }
   try {
     await pool.query(
@@ -45,13 +37,6 @@ async function blockUser(blockerId, blockedId) {
     }
     throw err;
   }
-  // Cancel any pending signal between the pair
-  await pool.query(
-    `UPDATE signals SET state = 'declined', updated_at = NOW()
-     WHERE state = 'pending'
-       AND ((sender_id = $1 AND recipient_id = $2) OR (sender_id = $2 AND recipient_id = $1))`,
-    [blockerId, blockedId]
-  );
 }
 
 async function unblockUser(blockerId, blockedId) {
@@ -80,16 +65,16 @@ async function reportUser(reporterId, reportedId, reason) {
   if (reason.length > 500) {
     throw makeError(400, 'VALIDATION_ERROR', 'reason must be 500 characters or fewer.');
   }
-  // Require an approved signal between the pair
+  // Require shared bubble membership (current or past) between the pair
   const relResult = await pool.query(
-    `SELECT 1 FROM signals
-     WHERE ((sender_id = $1 AND recipient_id = $2) OR (sender_id = $2 AND recipient_id = $1))
-       AND state = 'approved'
+    `SELECT 1 FROM bubble_members bm1
+     JOIN bubble_members bm2 ON bm1.bubble_id = bm2.bubble_id
+     WHERE bm1.user_id = $1 AND bm2.user_id = $2
      LIMIT 1`,
     [reporterId, reportedId]
   );
   if (relResult.rows.length === 0) {
-    throw makeError(403, 'FORBIDDEN', 'You can only report users you have matched with.');
+    throw makeError(403, 'FORBIDDEN', 'You can only report users you have shared a bubble with.');
   }
   try {
     await pool.query(

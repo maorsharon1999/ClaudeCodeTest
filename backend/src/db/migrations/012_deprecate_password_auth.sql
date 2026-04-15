@@ -1,0 +1,6 @@
+-- Migration 012: Deprecate password-based auth
+-- Auth is now exclusively handled via Firebase Auth (email+password).
+-- The password_hash column is no longer written or read by the application.
+-- Columns are preserved for rollback safety and data integrity.
+-- phone_hash and otp_attempts are also preserved for the same reason.
+-- These columns may be dropped in a future migration after production validation.

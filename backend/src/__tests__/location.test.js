@@ -1,11 +1,10 @@
 'use strict';
-process.env.DATABASE_URL       = 'postgresql://test:test@localhost:5432/test';
-process.env.REDIS_URL          = 'redis://localhost:6379';
-process.env.JWT_ACCESS_SECRET  = 'test-access-secret-long-enough-32chars!';
-process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-long-enough-32!!';
-process.env.PHONE_HMAC_SECRET  = 'test-phone-hmac-secret-long-enough!!!';
-process.env.ADMIN_SECRET       = 'test-admin-secret-long-enough-32chars!';
-process.env.STORAGE_BASE_URL   = 'http://localhost:3000';
+process.env.DATABASE_URL           = 'postgresql://test:test@localhost:5432/test';
+process.env.JWT_ACCESS_SECRET      = 'test-access-secret-long-enough-32chars!';
+process.env.JWT_REFRESH_SECRET     = 'test-refresh-secret-long-enough-32!!';
+process.env.ADMIN_SECRET           = 'test-admin-secret-long-enough-32chars!';
+process.env.FIREBASE_PROJECT_ID    = 'test-project';
+process.env.FIREBASE_STORAGE_BUCKET = 'test-project.appspot.com';
 
 const request = require('supertest');
 const jwt     = require('jsonwebtoken');

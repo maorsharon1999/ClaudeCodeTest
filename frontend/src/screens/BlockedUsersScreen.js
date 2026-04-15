@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,14 @@ import {
   StyleSheet,
   ActivityIndicator,
   Alert,
-  Image,
+  Animated,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import client from '../api/client';
+import { resolvePhotoUrl } from '../lib/photoUrl';
 import { theme } from '../theme';
+import { Header, Avatar, EmptyState, ErrorState } from '../components/ui';
+import { fadeInUp, fadeInUpStyle } from '../utils/animations';
 
 async function getBlockedUsers() {
   const { data } = await client.get('/blocks');
@@ -22,10 +25,12 @@ async function unblockUser(blockedId) {
   await client.delete(`/blocks/${blockedId}`);
 }
 
-export default function BlockedUsersScreen() {
+export default function BlockedUsersScreen({ navigation }) {
   const [blocks, setBlocks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const enterAnim = useRef(new Animated.Value(0)).current;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -37,6 +42,7 @@ export default function BlockedUsersScreen() {
       setError('Could not load blocked users.');
     } finally {
       setLoading(false);
+      fadeInUp(enterAnim).start();
     }
   }, []);
 
@@ -67,98 +73,105 @@ export default function BlockedUsersScreen() {
     );
   }
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={theme.colors.brand} />
-      </View>
-    );
-  }
+  function renderContent() {
+    if (loading) {
+      return (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={theme.colors.brand} />
+        </View>
+      );
+    }
 
-  if (error) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
-    );
-  }
+    if (error) {
+      return (
+        <View style={styles.center}>
+          <ErrorState message={error} onRetry={load} />
+        </View>
+      );
+    }
 
-  if (blocks.length === 0) {
+    if (blocks.length === 0) {
+      return (
+        <View style={styles.center}>
+          <EmptyState
+            icon="checkmark-circle-outline"
+            title="No blocked users"
+            subtitle="Your block list is clean"
+          />
+        </View>
+      );
+    }
+
     return (
-      <View style={styles.center}>
-        <Text style={styles.emptyText}>No blocked users.</Text>
-      </View>
+      <FlatList
+        data={blocks}
+        keyExtractor={item => item.blocked_id}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        renderItem={({ item }) => {
+          const photoUrl = resolvePhotoUrl(item.photos?.[0]);
+          return (
+            <View style={styles.row}>
+              <Avatar
+                uri={photoUrl}
+                name={item.display_name}
+                size={44}
+                style={styles.avatar}
+              />
+              <Text style={styles.name}>{item.display_name || 'Unknown'}</Text>
+              <TouchableOpacity
+                style={styles.unblockBtn}
+                onPress={() => handleUnblock(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`Unblock ${item.display_name}`}
+              >
+                <Text style={styles.unblockText}>Unblock</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        }}
+      />
     );
   }
 
   return (
-    <FlatList
-      style={styles.list}
-      data={blocks}
-      keyExtractor={item => item.blocked_id}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
-      renderItem={({ item }) => {
-        const apiBase = process.env.EXPO_PUBLIC_API_URL || '';
-        const host = apiBase ? apiBase.replace('/api/v1', '') : '';
-        const rawPhoto = item.photos?.[0];
-        const photoUrl = rawPhoto && host ? rawPhoto.replace(/^http:\/\/localhost:\d+/, host) : rawPhoto;
-
-        return (
-          <View style={styles.row}>
-            {photoUrl ? (
-              <Image source={{ uri: photoUrl }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarFallback]}>
-                <Text style={styles.avatarInitial}>
-                  {(item.display_name || '?')[0].toUpperCase()}
-                </Text>
-              </View>
-            )}
-            <Text style={styles.name}>{item.display_name || 'Unknown'}</Text>
-            <TouchableOpacity
-              style={styles.unblockBtn}
-              onPress={() => handleUnblock(item)}
-              accessibilityRole="button"
-              accessibilityLabel={`Unblock ${item.display_name}`}
-            >
-              <Text style={styles.unblockText}>Unblock</Text>
-            </TouchableOpacity>
-          </View>
-        );
-      }}
-    />
+    <View style={styles.screen}>
+      <Header title="Blocked Users" onBack={() => navigation.goBack()} />
+      <Animated.View style={[styles.list, fadeInUpStyle(enterAnim)]}>
+        {renderContent()}
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.bgDeep,
+  },
+  list: {
+    flex: 1,
+    backgroundColor: theme.colors.bgDeep,
+  },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.bgBase,
   },
-  errorText: { fontSize: 15, color: theme.colors.error },
-  emptyText: { fontSize: 15, color: theme.colors.textMuted },
-  list: { flex: 1, backgroundColor: theme.colors.bgBase },
-  separator: { height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.borderSubtle, marginLeft: 72 },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: theme.colors.borderSubtle,
+    marginLeft: 72,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: theme.colors.bgSurface,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
     marginRight: 12,
   },
-  avatarFallback: {
-    backgroundColor: theme.colors.bgWash,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarInitial: { fontSize: 18, color: theme.colors.textSecondary },
   name: { flex: 1, fontSize: 16, color: theme.colors.textPrimary },
   unblockBtn: {
     paddingHorizontal: 14,
@@ -166,6 +179,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.pill,
     borderWidth: 1,
     borderColor: theme.colors.brand,
+    backgroundColor: theme.colors.brandMuted,
   },
   unblockText: { fontSize: 14, color: theme.colors.brand, fontWeight: '600' },
 });

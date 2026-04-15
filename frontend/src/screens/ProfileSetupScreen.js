@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Animated,
 } from 'react-native';
-import { updateProfile } from '../api/profile';
+import { getProfile, updateProfile } from '../api/profile';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../theme';
 import PhotoEditor from '../components/PhotoEditor';
@@ -103,22 +103,9 @@ function WebDatePicker({ value, onChange, hasError, maxDate }) {
   );
 }
 
-const GENDER_OPTIONS = [
-  { label: 'Man', value: 'man' },
-  { label: 'Woman', value: 'woman' },
-  { label: 'Non-binary', value: 'nonbinary' },
-  { label: 'Prefer not to say', value: 'other' },
-];
-const LOOKING_FOR_OPTIONS = [
-  { label: 'Men', value: 'men' },
-  { label: 'Women', value: 'women' },
-  { label: 'Non-binary', value: 'nonbinary' },
-  { label: 'Everyone', value: 'everyone' },
-];
-const INTENT_OPTIONS = [
-  { label: 'Casual', value: 'casual' },
-  { label: 'Serious', value: 'serious' },
-  { label: 'Open', value: 'open' },
+const INTEREST_OPTIONS = [
+  'Social', 'Study', 'Food & Drinks', 'Sports', 'Music',
+  'Nightlife', 'Outdoors', 'Gaming', 'Tech', 'Art',
 ];
 const MIN_AGE_YEARS = 18;
 
@@ -140,9 +127,7 @@ export function ProfileForm({ initialValues = {}, onSave, saving, photos = [], o
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [bio, setBio] = useState(initialValues.bio || '');
-  const [gender, setGender] = useState(initialValues.gender || '');
-  const [lookingFor, setLookingFor] = useState(initialValues.looking_for || '');
-  const [intent, setIntent] = useState(initialValues.intent || '');
+  const [interests, setInterests] = useState(initialValues.interests || []);
   const [focusedField, setFocusedField] = useState(null);
   const [errors, setErrors] = useState({});
 
@@ -152,17 +137,19 @@ export function ProfileForm({ initialValues = {}, onSave, saving, photos = [], o
     new Date().getDate()
   );
 
-  const isFormValid =
-    displayName.trim().length > 0 &&
-    birthDate !== null &&
-    isAtLeast18(birthDate);
+  const isFormValid = displayName.trim().length > 0;
 
   function validate() {
     const newErrors = {};
     if (!displayName.trim()) newErrors.displayName = 'Name is required.';
-    if (!birthDate) newErrors.birthDate = 'Birth date is required.';
-    else if (!isAtLeast18(birthDate)) newErrors.birthDate = 'You must be at least 18.';
+    if (birthDate && !isAtLeast18(birthDate)) newErrors.birthDate = 'You must be at least 18.';
     return newErrors;
+  }
+
+  function toggleInterest(tag) {
+    setInterests((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : prev.length < 10 ? [...prev, tag] : prev
+    );
   }
 
   function handleSubmit() {
@@ -173,11 +160,9 @@ export function ProfileForm({ initialValues = {}, onSave, saving, photos = [], o
     }
     onSave({
       display_name: displayName.trim(),
-      birth_date: birthDate.toISOString().split('T')[0],
+      birth_date: birthDate ? birthDate.toISOString().split('T')[0] : undefined,
       bio: bio.trim() || undefined,
-      gender: gender || undefined,
-      looking_for: lookingFor || undefined,
-      intent: intent || undefined,
+      interests: interests.length > 0 ? interests : undefined,
     });
   }
 
@@ -221,7 +206,7 @@ export function ProfileForm({ initialValues = {}, onSave, saving, photos = [], o
         {errors.displayName && <Text style={styles.errorText}>{errors.displayName}</Text>}
 
         <Text style={styles.label}>
-          Birth Date <Text style={styles.required}>*</Text>
+          Birth Date <Text style={styles.optional}>(optional)</Text>
         </Text>
         {Platform.OS === 'web' ? (
           <WebDatePicker
@@ -283,54 +268,18 @@ export function ProfileForm({ initialValues = {}, onSave, saving, photos = [], o
 
       <View style={[styles.section, styles.sectionBorder]}>
         <Text style={styles.label}>
-          Gender <Text style={styles.optional}>(optional)</Text>
+          Interests <Text style={styles.optional}>(optional, up to 10)</Text>
         </Text>
         <View style={styles.optionRow}>
-          {GENDER_OPTIONS.map((opt) => (
+          {INTEREST_OPTIONS.map((tag) => (
             <TouchableOpacity
-              key={opt.value}
-              style={[styles.optionChip, gender === opt.value && styles.optionChipActive]}
-              onPress={() => setGender(gender === opt.value ? '' : opt.value)}
+              key={tag}
+              style={[styles.optionChip, interests.includes(tag) && styles.optionChipActive]}
+              onPress={() => toggleInterest(tag)}
               accessibilityRole="button"
             >
-              <Text style={[styles.optionChipText, gender === opt.value && styles.optionChipTextActive]}>
-                {opt.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.label}>
-          Looking For <Text style={styles.optional}>(optional)</Text>
-        </Text>
-        <View style={styles.optionRow}>
-          {LOOKING_FOR_OPTIONS.map((opt) => (
-            <TouchableOpacity
-              key={opt.value}
-              style={[styles.optionChip, lookingFor === opt.value && styles.optionChipActive]}
-              onPress={() => setLookingFor(lookingFor === opt.value ? '' : opt.value)}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.optionChipText, lookingFor === opt.value && styles.optionChipTextActive]}>
-                {opt.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.label}>
-          Intent <Text style={styles.optional}>(optional)</Text>
-        </Text>
-        <View style={styles.optionRow}>
-          {INTENT_OPTIONS.map((opt) => (
-            <TouchableOpacity
-              key={opt.value}
-              style={[styles.optionChip, intent === opt.value && styles.optionChipActive]}
-              onPress={() => setIntent(intent === opt.value ? '' : opt.value)}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.optionChipText, intent === opt.value && styles.optionChipTextActive]}>
-                {opt.label}
+              <Text style={[styles.optionChipText, interests.includes(tag) && styles.optionChipTextActive]}>
+                {tag}
               </Text>
             </TouchableOpacity>
           ))}
@@ -358,6 +307,14 @@ export default function ProfileSetupScreen({ navigation }) {
   const { markProfileComplete } = useAuth();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [photos, setPhotos] = useState([]);
+
+  // Load existing photos from backend on mount
+  useEffect(() => {
+    getProfile().then((data) => {
+      if (data?.photos) setPhotos(data.photos.filter(Boolean));
+    }).catch(() => {});
+  }, []);
 
   // Entrance animation
   const enterAnim = useRef(new Animated.Value(0)).current;
@@ -395,11 +352,11 @@ export default function ProfileSetupScreen({ navigation }) {
         <Text style={styles.backButtonText}>‹ Back</Text>
       </TouchableOpacity>
       <Text style={styles.heading}>Set Up Your Profile</Text>
-      <Text style={styles.subheading}>Tell us a bit about yourself.</Text>
+      <Text style={styles.subheading}>Tell us a bit about yourself so others can find you.</Text>
       {saveError ? (
         <Text style={styles.saveError}>{saveError}</Text>
       ) : null}
-      <ProfileForm onSave={handleSave} saving={saving} />
+      <ProfileForm onSave={handleSave} saving={saving} photos={photos} onPhotosChange={setPhotos} />
     </Animated.View>
   );
 }

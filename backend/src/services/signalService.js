@@ -1,12 +1,6 @@
 'use strict';
 const pool = require('../db/pool');
-
-function makeError(status, code, message) {
-  const err = new Error(message);
-  err.status = status;
-  err.code = code;
-  return err;
-}
+const { makeError, UUID_RE } = require('../utils/errors');
 
 async function sendSignal(senderId, recipientId) {
   // 1. Self-signal check
@@ -105,8 +99,6 @@ async function sendSignal(senderId, recipientId) {
 
   return insertResult.rows[0];
 }
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function respondSignal(signalId, recipientId, action) {
   // 0. Validate signalId is a UUID before hitting the DB

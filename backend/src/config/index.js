@@ -6,18 +6,18 @@ function required(name) {
   return val;
 }
 
+// Firebase must be configured — no local fallback.
 module.exports = {
   port: parseInt(process.env.PORT || '3000', 10),
   nodeEnv: process.env.NODE_ENV || 'development',
   databaseUrl: required('DATABASE_URL'),
-  redisUrl: required('REDIS_URL'),
   jwtAccessSecret: required('JWT_ACCESS_SECRET'),
   jwtRefreshSecret: required('JWT_REFRESH_SECRET'),
-  phoneHmacSecret: required('PHONE_HMAC_SECRET'),
-  otpExpirySeconds: parseInt(process.env.OTP_EXPIRY_SECONDS || '600', 10),
   jwtAccessExpirySeconds: 15 * 60,        // 15 minutes
   jwtRefreshExpirySeconds: 7 * 24 * 3600, // 7 days
   adminSecret: required('ADMIN_SECRET'),
   publicUrl: process.env.PUBLIC_URL || 'http://localhost:3000',
-  storageBaseUrl: required('STORAGE_BASE_URL'),
+  firebaseProjectId: required('FIREBASE_PROJECT_ID'),
+  firebaseStorageBucket: required('FIREBASE_STORAGE_BUCKET'),
+  firebaseServiceAccount: process.env.FIREBASE_SERVICE_ACCOUNT || null,
 };

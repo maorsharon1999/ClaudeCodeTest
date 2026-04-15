@@ -5,11 +5,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#6C47FF"
+      "backgroundColor": "#0A0A14"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -28,22 +28,44 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.bubble.mvp",
-      "permissions": ["RECORD_AUDIO"],
-      "config": { "googleMaps": { "apiKey": "AIzaSyBm9jrLibVvvD-BM-nZx-lQKi_py_xJaYo" } }
+      "permissions": [
+        "RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCZ61NHglKjwsHS7tqpVZ0Ebt4HiPQNIAA"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      ["expo-splash-screen", {
-        "image": "./assets/splash.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#6C47FF"
-      }],
-      ["expo-secure-store"],
-      ["expo-location", {
-        "locationWhenInUsePermission": "Bubble needs your location to find people nearby."
-      }]
-    ]
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#6C47FF"
+        }
+      ],
+      [
+        "expo-secure-store"
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Bubble needs your location to find people nearby."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "332fc6e1-0521-436d-8b8c-1c507861ad36"
+      }
+    },
+    "owner": "maorsharon"
   }
 }
