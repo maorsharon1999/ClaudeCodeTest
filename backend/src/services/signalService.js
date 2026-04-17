@@ -142,7 +142,9 @@ async function respondSignal(signalId, recipientId, action) {
   return updateResult.rows[0];
 }
 
-async function getIncoming(recipientId) {
+async function getIncoming(recipientId, { before = null, limit = 50 } = {}) {
+  const clampedLimit = Math.min(Math.max(parseInt(limit) || 50, 1), 100);
+
   const result = await pool.query(
     `SELECT
        s.id,
@@ -158,11 +160,13 @@ async function getIncoming(recipientId) {
      JOIN visibility_states vs ON vs.user_id = s.sender_id AND vs.state = 'visible'
      WHERE s.recipient_id = $1
        AND s.state = 'pending'
-     ORDER BY s.created_at DESC`,
-    [recipientId]
+       AND ($2::uuid IS NULL OR s.created_at < (SELECT created_at FROM signals WHERE id = $2))
+     ORDER BY s.created_at DESC
+     LIMIT $3`,
+    [recipientId, before, clampedLimit]
   );
 
-  return result.rows.map(row => ({
+  const signals = result.rows.map(row => ({
     id: row.id,
     created_at: row.created_at,
     proximity_bucket: row.proximity_bucket,
@@ -174,9 +178,16 @@ async function getIncoming(recipientId) {
       photos: row.photos,
     },
   }));
+
+  return {
+    signals,
+    next_cursor: signals.length === clampedLimit ? signals[signals.length - 1].id : null,
+  };
 }
 
-async function getOutgoing(senderId) {
+async function getOutgoing(senderId, { before = null, limit = 50 } = {}) {
+  const clampedLimit = Math.min(Math.max(parseInt(limit) || 50, 1), 100);
+
   const result = await pool.query(
     `SELECT
        s.id,
@@ -190,11 +201,13 @@ async function getOutgoing(senderId) {
      JOIN profiles p ON p.user_id = s.recipient_id
      WHERE s.sender_id = $1
        AND s.state IN ('pending', 'approved')
-     ORDER BY s.created_at DESC`,
-    [senderId]
+       AND ($2::uuid IS NULL OR s.created_at < (SELECT created_at FROM signals WHERE id = $2))
+     ORDER BY s.created_at DESC
+     LIMIT $3`,
+    [senderId, before, clampedLimit]
   );
 
-  return result.rows.map(row => ({
+  const signals = result.rows.map(row => ({
     id: row.id,
     state: row.state,
     created_at: row.created_at,
@@ -205,6 +218,11 @@ async function getOutgoing(senderId) {
       age: row.age,
     },
   }));
+
+  return {
+    signals,
+    next_cursor: signals.length === clampedLimit ? signals[signals.length - 1].id : null,
+  };
 }
 
 module.exports = { sendSignal, respondSignal, getIncoming, getOutgoing };

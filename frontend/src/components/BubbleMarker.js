@@ -1,173 +1,212 @@
+/**
+ * BubbleMarker — Gold Standard bubble map marker.
+ *
+ * Spatial UI Standard compliance:
+ *   ✅ Base   — circular View with semi-transparent glass background (theme.colors.bgGlass)
+ *   ✅ Core   — circular Image centered via absolute fill; initials fallback
+ *   ✅ Border — 2pt solid stroke using theme.colors.brand / theme.colors.cyan
+ *   ✅ Anim   — Animated ripple (expand+fade) + breathe (scale) with useNativeDriver:true
+ *
+ * Map Interaction: wrap in <Marker tracksViewChanges={true}> to prevent flicker.
+ *
+ * Props:
+ *   profilePictureUrl / photoUrl  — photo URI
+ *   name                          — display name (initials fallback)
+ *   isCurrentUser                 — uses theme.colors.cyan accent when true
+ *   size                          — photo diameter in dp (default 52)
+ */
 import React, { useEffect, useRef } from 'react';
-import { Animated, View, Image, Text, StyleSheet, Platform } from 'react-native';
+import { Animated, View, Image, Text, StyleSheet } from 'react-native';
+import { theme } from '../theme';
 
-const SIZE = 56;
-const RING = 3;
-const INNER_BORDER = 1.5;
-const TOTAL = SIZE + (RING + INNER_BORDER) * 2;
+export default function BubbleMarker({
+  profilePictureUrl,
+  photoUrl,
+  name,
+  isCurrentUser = false,
+  size = 52,
+}) {
+  const photo  = profilePictureUrl || photoUrl;
+  const accent = isCurrentUser ? theme.colors.cyan : theme.colors.brand;
 
-// Brand colors
-const BRAND_BLUE = '#0072CE';
-const SELF_TEAL = '#00C9A7';
-
-export default function BubbleMarker({ photoUrl, name, isCurrentUser = false }) {
-  const pulse = useRef(new Animated.Value(1)).current;
+  const rippleScale   = useRef(new Animated.Value(1)).current;
+  const rippleOpacity = useRef(new Animated.Value(0.7)).current;
+  const breathe       = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 1.08,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 1.0,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
+    const rippleAnim = Animated.loop(
+      Animated.parallel([
+        Animated.timing(rippleScale,   { toValue: 1.9, duration: 2400, useNativeDriver: true }),
+        Animated.timing(rippleOpacity, { toValue: 0,   duration: 2400, useNativeDriver: true }),
       ])
-    ).start();
+    );
+
+    const breatheAnim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathe, { toValue: 1.1, duration: 1500, useNativeDriver: true }),
+        Animated.timing(breathe, { toValue: 1.0,  duration: 1500, useNativeDriver: true }),
+      ])
+    );
+
+    rippleAnim.start();
+    breatheAnim.start();
+    return () => { rippleAnim.stop(); breatheAnim.stop(); };
   }, []);
 
   const initials = name
-    ? name
-        .trim()
-        .split(/\s+/)
-        .map((w) => w[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase()
+    ? name.trim().split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
     : '?';
 
-  const ringColor = isCurrentUser ? SELF_TEAL : BRAND_BLUE;
-  const pinColor = isCurrentUser ? SELF_TEAL : BRAND_BLUE;
+  // Derived sizes — all relative to `size` prop
+  const rippleBase = size + 20;          // ring origin before scale
+  const shellSize  = size + 10;          // glass shell diameter
+  const totalSize  = rippleBase * 2;     // wrapper must contain max ripple extent
 
   return (
-    <Animated.View style={[styles.wrapper, { transform: [{ scale: pulse }] }]}>
-      {/* Outer colored ring */}
-      <View
-        style={[
-          styles.ring,
-          { borderColor: ringColor },
-          isCurrentUser ? styles.shadowTeal : styles.shadowBlue,
-        ]}
-      >
-        {/* White inner border layer */}
-        <View style={styles.innerBorder}>
-          {/* Content: photo or initials fallback */}
-          {photoUrl ? (
-            <Image source={{ uri: photoUrl }} style={styles.photo} />
-          ) : (
-            <View style={[styles.initialsContainer, { backgroundColor: ringColor }]}>
-              <Text style={styles.initialsText}>{initials}</Text>
-            </View>
-          )}
+    <View style={[styles.wrapper, { width: totalSize, height: totalSize }]}>
 
-          {/* 3D shine overlay — top-left highlight simulating a glass sphere */}
-          <View style={styles.shine} pointerEvents="none" />
-        </View>
-      </View>
-
-      {/* Downward-pointing pin tip */}
-      <View
+      {/* ── Layer 1: expanding ripple ring ─────────────────────────────── */}
+      <Animated.View
+        pointerEvents="none"
         style={[
-          styles.pin,
+          styles.ripple,
           {
-            borderTopColor: pinColor,
+            width: rippleBase, height: rippleBase,
+            borderRadius: rippleBase / 2,
+            borderColor: accent,
+            opacity: rippleOpacity,
+            transform: [{ scale: rippleScale }],
           },
         ]}
       />
-    </Animated.View>
+
+      {/* ── Layer 2: static ambient glow halo ──────────────────────────── */}
+      <View
+        pointerEvents="none"
+        style={[
+          styles.halo,
+          theme.shadows.orb,
+          {
+            width: shellSize + 16, height: shellSize + 16,
+            borderRadius: (shellSize + 16) / 2,
+            borderColor: accent,
+          },
+        ]}
+      />
+
+      {/* ── Layer 3: breathing glass shell (no overflow:hidden — kills anim on Android) */}
+      <Animated.View
+        style={[
+          styles.shell,
+          {
+            width: shellSize, height: shellSize,
+            borderRadius: shellSize / 2,
+            transform: [{ scale: breathe }],
+          },
+        ]}
+      >
+        {/* ── Layer 4: 2pt theme-colored border + clipped photo circle ─── */}
+        {/* Standard: 2pt solid stroke (theme primary color) */}
+        <View
+          style={[
+            styles.photoBorder,
+            {
+              width: size + 4, height: size + 4,
+              borderRadius: (size + 4) / 2,
+              borderColor: accent,
+            },
+          ]}
+        >
+          {/* Core: circular Image centered via absolute fill */}
+          <View style={[styles.photoClip, { width: size, height: size, borderRadius: size / 2 }]}>
+            {photo ? (
+              <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            ) : (
+              <View style={[styles.initialsContainer, { backgroundColor: accent }]}>
+                <Text style={[styles.initialsText, { fontSize: size * 0.32 }]}>{initials}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* ── Layer 5: top-left glass shine (clipped by own borderRadius) ─ */}
+        <View
+          pointerEvents="none"
+          style={[
+            styles.shine,
+            { width: shellSize * 0.50, height: shellSize * 0.36 },
+          ]}
+        />
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
     alignItems: 'center',
-    // No overflow:hidden here — the pin must be visible outside the ring
+    justifyContent: 'center',
   },
 
-  ring: {
-    width: TOTAL,
-    height: TOTAL,
-    borderRadius: TOTAL / 2,
-    borderWidth: RING,
-    // shadow applied via conditional style below
+  // Ripple: positioned absolutely at center, expands via scale animation
+  ripple: {
+    position: 'absolute',
+    borderWidth: 2,
+    backgroundColor: 'transparent',
   },
 
-  shadowBlue: Platform.select({
-    ios: {
-      shadowColor: BRAND_BLUE,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.45,
-      shadowRadius: 8,
-    },
-    android: { elevation: 8 },
-  }),
+  // Halo: static glow ring using theme.shadows.orb
+  halo: {
+    position: 'absolute',
+    borderWidth: 1,
+    backgroundColor: 'transparent',
+    opacity: 0.4,
+  },
 
-  shadowTeal: Platform.select({
-    ios: {
-      shadowColor: SELF_TEAL,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.45,
-      shadowRadius: 8,
-    },
-    android: { elevation: 8 },
-  }),
+  // Glass shell: semi-transparent base (theme.colors.bgGlass) — NO overflow:hidden
+  shell: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.bgGlass,
+    borderWidth: 1,
+    borderColor: theme.colors.borderSubtle,
+  },
 
-  innerBorder: {
-    flex: 1,
-    borderRadius: (TOTAL - RING * 2) / 2,
-    borderWidth: INNER_BORDER,
-    borderColor: 'rgba(255,255,255,0.9)',
+  // 2pt solid border — Standard requirement
+  photoBorder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+  },
+
+  // Photo clip: overflow:hidden here only (not on Animated shell)
+  photoClip: {
     overflow: 'hidden',
-  },
-
-  photo: {
-    width: '100%',
-    height: '100%',
+    backgroundColor: theme.colors.bgElevated,
   },
 
   initialsContainer: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   initialsText: {
-    fontSize: 18,
     fontWeight: '700',
-    color: '#fff',
+    color: theme.colors.bgDeep,
     letterSpacing: 0.5,
   },
 
-  // Top-left semicircle highlight — the illusion of 3D gloss without a gradient library.
-  // Positioned absolutely at the top-left; the borderRadius clips it into the circular frame.
+  // Glass shine: organic highlight, self-clipped by its own border-radius
   shine: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    width: SIZE * 0.72,
-    height: SIZE * 0.45,
-    borderTopLeftRadius: SIZE / 2,
-    borderTopRightRadius: SIZE * 0.35,
-    borderBottomRightRadius: SIZE * 0.5,
-    backgroundColor: 'rgba(255,255,255,0.32)',
-    // Slight rotation makes the highlight feel more natural
-    transform: [{ rotate: '-8deg' }, { translateX: -2 }],
-  },
-
-  // Downward triangle pin
-  pin: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 10,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    // borderTopColor set inline per-instance
-    marginTop: -1, // tight seam with the ring
+    top: 5,
+    left: 5,
+    borderTopLeftRadius: 999,
+    borderTopRightRadius: 50,
+    borderBottomRightRadius: 30,
+    backgroundColor: theme.colors.bgGlass,
+    transform: [{ rotate: '-10deg' }],
+    opacity: 0.5,
   },
 });

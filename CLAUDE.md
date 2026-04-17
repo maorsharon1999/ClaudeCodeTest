@@ -1,5 +1,8 @@
 # Claude Code Instructions
 
+> When the user references `@docs/claude-task.md`, treat it as the source of truth for the current task.
+> Read it fully before planning or acting. Follow its scope, rules, and workflow exactly.
+
 ## Git & GitHub Workflow
 
 - After completing any meaningful unit of work (new feature, bug fix, refactor, config change), commit and push to GitHub immediately.

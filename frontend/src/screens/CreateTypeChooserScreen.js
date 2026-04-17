@@ -41,14 +41,30 @@ export default function CreateTypeChooserScreen({ navigation }) {
   return (
     <Animated.View style={[styles.flex, fadeInUpStyle(enterAnim)]}>
       <Header
-        title="Create Bubble"
+        title="Create"
         onBack={() => navigation.goBack()}
       />
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.subtitle}>What kind of bubble are you creating?</Text>
+        <TouchableOpacity
+          style={styles.dropMessageCard}
+          onPress={() => navigation.navigate('DropMessage')}
+          accessibilityRole="button"
+          accessibilityLabel="Drop a Message"
+        >
+          <View style={styles.dropMessageIcon}>
+            <Ionicons name="pin" size={24} color="#fff" />
+          </View>
+          <View style={styles.dropMessageText}>
+            <Text style={styles.dropMessageTitle}>Drop a Message</Text>
+            <Text style={styles.dropMessageDesc}>Leave a note anchored to this spot for people nearby to discover</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.brand} />
+        </TouchableOpacity>
+
+        <Text style={styles.subtitle}>Or create a bubble</Text>
 
         <View style={styles.grid}>
           {CATEGORIES.map((cat) => {
@@ -77,6 +93,37 @@ export default function CreateTypeChooserScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: theme.colors.bgDeep },
+  dropMessageCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.brandMuted,
+    borderRadius: theme.radii.lg,
+    borderWidth: 1.5,
+    borderColor: theme.colors.brand,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
+    gap: theme.spacing.md,
+  },
+  dropMessageIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: theme.colors.brand,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dropMessageText: { flex: 1 },
+  dropMessageTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.colors.brand,
+    marginBottom: 3,
+  },
+  dropMessageDesc: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    lineHeight: 17,
+  },
   container: { padding: theme.spacing.xl, paddingBottom: 48 },
   subtitle: {
     fontSize: 15,

@@ -121,21 +121,23 @@ router.put('/:id', signalRespondLimiter, async (req, res, next) => {
   }
 });
 
-// GET /incoming — list pending signals sent to me
+// GET /incoming — list pending signals sent to me (cursor-paginated)
 router.get('/incoming', async (req, res, next) => {
   try {
-    const signals = await getIncoming(req.userId);
-    return res.status(200).json({ signals });
+    const { before, limit } = req.query;
+    const result = await getIncoming(req.userId, { before: before || null, limit });
+    return res.status(200).json(result);
   } catch (err) {
     next(err);
   }
 });
 
-// GET /outgoing — list my sent signals (pending/approved only)
+// GET /outgoing — list my sent signals (pending/approved only, cursor-paginated)
 router.get('/outgoing', async (req, res, next) => {
   try {
-    const signals = await getOutgoing(req.userId);
-    return res.status(200).json({ signals });
+    const { before, limit } = req.query;
+    const result = await getOutgoing(req.userId, { before: before || null, limit });
+    return res.status(200).json(result);
   } catch (err) {
     next(err);
   }

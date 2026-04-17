@@ -415,7 +415,7 @@ GET http://localhost:3000/health
 
 | Issue | Severity | Details |
 |-------|---------|---------|
-| No pagination on signals endpoints | Medium | GET `/api/v1/signals` — at scale with many pending signals this could be slow. |
+| No pagination on signals endpoints | ✅ Fixed | Both `/incoming` and `/outgoing` now cursor-paginated (`before` + `limit` query params, returns `next_cursor`). |
 | No DELETE on bubbles | Low | Only `POST :id/close` (creator) and `POST :id/remove` (admin). Hard delete not needed for MVP. |
 | No read receipts | Low | Out of MVP scope. |
 | Legacy photo URL migration endpoint | Info | `/internal/migrate/strip-legacy-photo-urls` — one-time fix, can be removed after confirming all data cleaned. |
@@ -459,9 +459,9 @@ GET http://localhost:3000/health
 ## What's Next (Prioritized)
 
 1. **Selfie/liveness verification gate** — in MVP scope, not built. Users currently have no verification step before becoming discoverable.
-2. **Signals pagination** — before any real users, add `LIMIT/OFFSET` or cursor pagination to `GET /api/v1/signals`.
-4. **Release readiness** — EAS build profile has production vars (`6aa304f`). Need: App Store / Play Store assets, privacy policy, liveness review.
-5. **Prod migration run** — migrations 019 and 020 are committed but not yet applied to Neon. Pre-flight: `SELECT COUNT(*) FROM spatial_messages WHERE visibility_type = 'circles';` must return 0 before running `npm run migrate` against production.
+2. **Signals pagination** — ✅ Done. Both `/incoming` and `/outgoing` cursor-paginated.
+3. **Release readiness** — EAS build profile has production vars (`6aa304f`). Need: App Store / Play Store assets, privacy policy, liveness review.
+4. **Prod migration run** — migrations 019–021 are committed but not yet applied to Neon. Pre-flight: `SELECT COUNT(*) FROM spatial_messages WHERE visibility_type = 'circles';` must return 0 before running `npm run migrate` against production.
 
 ---
 

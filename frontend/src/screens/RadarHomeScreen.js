@@ -10,16 +10,18 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { getNearbyBubbles, joinBubble } from '../api/bubbles';
 import { setVisibility, getProfile } from '../api/profile';
 import { getNearbyUsers } from '../api/discovery';
+import { getNearbySpatialMessages } from '../api/spatialMessages';
 import BubbleMapMarker from '../components/BubbleMapMarker';
 import BubbleAreaOverlay from '../components/BubbleAreaOverlay';
 import BubbleAreaMarker from '../components/BubbleAreaMarker';
-import UserPhotoMarker from '../components/UserPhotoMarker';
+import BubbleMarker from '../components/BubbleMarker';
+import SpatialMessageMarker from '../components/SpatialMessageMarker';
 import BubblePeekCard from '../components/BubblePeekCard';
 import { IconButton } from '../components/ui';
 import { pulseLoop } from '../utils/animations';
@@ -44,6 +46,10 @@ export default function RadarHomeScreen({ navigation }) {
   const [filterCat, setFilterCat] = useState(null);
   const [nearbyUsers, setNearbyUsers] = useState([]);
   const [myProfile, setMyProfile] = useState(null);
+  const [spatialMessages, setSpatialMessages] = useState([]);
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [bubbleOffset, setBubbleOffset] = useState({ dx: 0, dy: 0 });
+  const [bubblePhase, setBubblePhase] = useState(0);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -91,6 +97,7 @@ export default function RadarHomeScreen({ navigation }) {
       const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
       setMyLocation(coords);
       fetchBubbles(coords.latitude, coords.longitude);
+      fetchSpatialMessages(coords.latitude, coords.longitude);
     }
 
     resolveLocation().catch(() => setMyLocation(fallback));
@@ -102,6 +109,7 @@ export default function RadarHomeScreen({ navigation }) {
     pollRef.current = setInterval(() => {
       fetchBubbles(myLocation.latitude, myLocation.longitude);
       fetchNearbyUsers();
+      fetchSpatialMessages(myLocation.latitude, myLocation.longitude);
     }, POLL_INTERVAL);
     return () => clearInterval(pollRef.current);
   }, [myLocation]);
@@ -113,6 +121,15 @@ export default function RadarHomeScreen({ navigation }) {
     anim.start();
     return () => anim.stop();
   }, [myLocation, pulseAnim]);
+
+  // Bubbly wobble animation — gentle organic jelly motion
+  useEffect(() => {
+    if (!myLocation) return;
+    const interval = setInterval(() => {
+      setBubblePhase(p => p + 0.04);
+    }, 50);
+    return () => clearInterval(interval);
+  }, [myLocation]);
 
   // Auto-center map on user location once loaded
   useEffect(() => {
@@ -141,6 +158,15 @@ export default function RadarHomeScreen({ navigation }) {
       setNearbyUsers(users || []);
     } catch {
       // ignore — endpoint may not be wired yet
+    }
+  }
+
+  async function fetchSpatialMessages(lat, lng) {
+    try {
+      const msgs = await getNearbySpatialMessages(lat, lng);
+      setSpatialMessages(msgs || []);
+    } catch {
+      // ignore
     }
   }
 
@@ -226,6 +252,47 @@ export default function RadarHomeScreen({ navigation }) {
           />
         ))}
 
+        {/* Shiny bubble around current user — gentle wobble for bubbly feel */}
+        {myLocation && (() => {
+          const w = 0.00004; // subtle wobble ~4m
+          const wobbled = {
+            latitude: myLocation.latitude + Math.sin(bubblePhase) * w,
+            longitude: myLocation.longitude + Math.cos(bubblePhase * 0.8) * w,
+          };
+          return (
+            <>
+              <Circle
+                center={wobbled}
+                radius={55}
+                fillColor="rgba(150,240,235,0.22)"
+                strokeColor="rgba(0,210,190,0.55)"
+                strokeWidth={2.5}
+                zIndex={8}
+              />
+            </>
+          );
+        })()}
+
+        {/* Shiny bubbles around nearby users */}
+        {nearbyUsers.map((u) => {
+          const w = 0.00004;
+          const uWobble = {
+            latitude: u.lat + Math.sin(bubblePhase + (u.id || 0) * 2) * w,
+            longitude: u.lng + Math.cos(bubblePhase * 0.8 + (u.id || 0) * 2) * w,
+          };
+          return (
+            <Circle
+              key={`bubble-${u.id || u.user_id}`}
+              center={uWobble}
+              radius={45}
+              fillColor="rgba(130,200,255,0.20)"
+              strokeColor="rgba(0,140,230,0.50)"
+              strokeWidth={2.5}
+              zIndex={3}
+            />
+          );
+        })}
+
         {/* Current user photo marker */}
         <Marker
           coordinate={myLocation}
@@ -233,11 +300,11 @@ export default function RadarHomeScreen({ navigation }) {
           tracksViewChanges={true}
           zIndex={10}
         >
-          <UserPhotoMarker
+          <BubbleMarker
             photoUrl={myProfile?.photos?.[0] ? resolvePhotoUrl(myProfile.photos[0]) : null}
             name={myProfile?.display_name || '?'}
             isCurrentUser
-            size={44}
+            size={60}
           />
         </Marker>
 
@@ -253,7 +320,7 @@ export default function RadarHomeScreen({ navigation }) {
             tracksViewChanges={true}
             zIndex={5}
           >
-            <UserPhotoMarker
+            <BubbleMarker
               photoUrl={u.photos?.[0] ? resolvePhotoUrl(u.photos[0]) : null}
               name={u.display_name || '?'}
               size={40}
@@ -290,7 +357,49 @@ export default function RadarHomeScreen({ navigation }) {
             </Marker>
           );
         })}
+
+        {/* Spatial message markers */}
+        {spatialMessages.map((m) => (
+          <Marker
+            key={m.id}
+            coordinate={{ latitude: m.lat, longitude: m.lng }}
+            anchor={{ x: 0.5, y: 1.0 }}
+            tracksViewChanges={false}
+            onPress={() => setSelectedMessage(m)}
+            zIndex={7}
+          >
+            <SpatialMessageMarker isUnlocked={m.is_unlocked} authorName={m.author_name} />
+          </Marker>
+        ))}
       </MapView>
+
+      {/* Spatial message popup */}
+      {selectedMessage && (
+        <TouchableOpacity
+          style={styles.msgOverlay}
+          activeOpacity={1}
+          onPress={() => setSelectedMessage(null)}
+        >
+          <View style={styles.msgCard} onStartShouldSetResponder={() => true}>
+            <View style={styles.msgCardHeader}>
+              <Ionicons
+                name={selectedMessage.is_unlocked ? 'chatbubble' : 'lock-closed'}
+                size={16}
+                color={selectedMessage.is_unlocked ? theme.colors.brand : theme.colors.textMuted}
+              />
+              <Text style={styles.msgAuthor}>{selectedMessage.author_name || 'Anonymous'}</Text>
+              <TouchableOpacity onPress={() => setSelectedMessage(null)} style={styles.msgClose}>
+                <Ionicons name="close" size={18} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            {selectedMessage.is_unlocked ? (
+              <Text style={styles.msgContent}>{selectedMessage.content}</Text>
+            ) : (
+              <Text style={styles.msgLocked}>🔒 Get within 50m to read this message</Text>
+            )}
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* Top bar overlay */}
       <View style={styles.topBar} pointerEvents="box-none">

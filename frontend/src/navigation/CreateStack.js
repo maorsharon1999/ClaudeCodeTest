@@ -5,6 +5,7 @@ import CreateTimeAndPlaceScreen from '../screens/CreateTimeAndPlaceScreen';
 import CreateVisibilityScreen from '../screens/CreateVisibilityScreen';
 import CreatePreviewScreen from '../screens/CreatePreviewScreen';
 import CreateAreaScreen from '../screens/CreateAreaScreen';
+import DropMessageScreen from '../screens/DropMessageScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -16,6 +17,7 @@ export default function CreateStack() {
       <Stack.Screen name="CreateArea" component={CreateAreaScreen} />
       <Stack.Screen name="CreateVisibility" component={CreateVisibilityScreen} />
       <Stack.Screen name="CreatePreview" component={CreatePreviewScreen} />
+      <Stack.Screen name="DropMessage" component={DropMessageScreen} />
     </Stack.Navigator>
   );
 }

@@ -4,6 +4,11 @@ import axios from 'axios';
 // Falls back to localhost for local development with Metro.
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
 
+// Dev-mode connectivity diagnostic — tells you exactly which server the app is hitting.
+if (__DEV__) {
+  console.log(`[API] Connecting to: ${BASE_URL}`);
+}
+
 const client = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,
