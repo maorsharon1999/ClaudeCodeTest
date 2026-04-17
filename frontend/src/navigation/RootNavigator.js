@@ -1,8 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, StyleSheet, Animated, Easing, StatusBar } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Notifications from 'expo-notifications';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../theme';
 
@@ -182,6 +183,46 @@ function SplashAnimationScreen({ onDone }) {
 export default function RootNavigator() {
   const { authState } = useAuth();
   const [splashDone, setSplashDone] = useState(false);
+  const navigationRef = useNavigationContainerRef();
+  const notificationResponseListener = useRef();
+
+  useEffect(() => {
+    notificationResponseListener.current =
+      Notifications.addNotificationResponseReceivedListener(response => {
+        const data = response.notification.request.content.data;
+        if (!navigationRef.isReady()) return;
+
+        switch (data?.type) {
+          case 'signal_received':
+          case 'signal_approved':
+            navigationRef.navigate('InboxStack', { screen: 'NotificationsCenterScreen' });
+            break;
+          case 'dm_received':
+            if (data.thread_id) {
+              navigationRef.navigate('InboxStack', {
+                screen: 'DirectChatScreen',
+                params: { threadId: data.thread_id },
+              });
+            }
+            break;
+          case 'bubble_message':
+          case 'bubble_join':
+            if (data.bubble_id) {
+              navigationRef.navigate('ExploreStack', {
+                screen: 'BubbleChatScreen',
+                params: { bubbleId: data.bubble_id },
+              });
+            }
+            break;
+        }
+      });
+
+    return () => {
+      if (notificationResponseListener.current) {
+        Notifications.removeNotificationSubscription(notificationResponseListener.current);
+      }
+    };
+  }, []);
 
   const showSplash = !splashDone || authState === null;
 
@@ -202,7 +243,7 @@ export default function RootNavigator() {
   };
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer theme={navTheme} ref={navigationRef}>
       <StatusBar barStyle="dark-content" backgroundColor={theme.colors.bgDeep} />
       {authState ? <AppNavigator /> : <AuthNavigator />}
     </NavigationContainer>

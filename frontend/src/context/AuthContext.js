@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { configureInterceptors } from '../api/client';
 import { refreshToken as apiRefreshToken, deleteSession, deleteAccount as apiDeleteAccount } from '../api/auth';
+import { registerForPushNotifications, unregisterPushToken } from '../services/notifications';
 
 const REFRESH_TOKEN_KEY   = 'bubble_refresh_token';
 const PROFILE_COMPLETE_KEY = 'bubble_profile_complete';
@@ -35,6 +36,7 @@ export function AuthProvider({ children }) {
   const [authState, setAuthState] = useState(null);
   const [profileComplete, setProfileComplete] = useState(false);
   const accessTokenRef = useRef(null);
+  const pushTokenRef = useRef(null);
 
   // Keep ref in sync with state so interceptors can read it synchronously
   useEffect(() => {
@@ -109,6 +111,8 @@ export function AuthProvider({ children }) {
     accessTokenRef.current = access_token;
     setProfileComplete(!!profile_complete);
     setAuthState(true);
+    // Register push token after successful sign-in (best-effort)
+    registerForPushNotifications().then(t => { pushTokenRef.current = t; }).catch(() => {});
   }, []);
 
   const markProfileComplete = useCallback(() => {
@@ -117,6 +121,11 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    // Unregister push token before clearing session
+    if (pushTokenRef.current) {
+      await unregisterPushToken(pushTokenRef.current).catch(() => {});
+      pushTokenRef.current = null;
+    }
     try {
       const storedRefreshToken = await storage.getItem(REFRESH_TOKEN_KEY);
       if (storedRefreshToken) await deleteSession(storedRefreshToken);
