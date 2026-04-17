@@ -32,7 +32,7 @@ ClaudeCodeTest/
 │   │   │   ├── pool.js      — PostgreSQL connection pool (max 10)
 │   │   │   ├── migrate.js   — Migration runner
 │   │   │   ├── firebase.js  — Firebase Admin SDK init
-│   │   │   └── migrations/  — 17 SQL migration files (001–018)
+│   │   │   └── migrations/  — 19 SQL migration files (001–020)
 │   └── package.json
 ├── frontend/         — React Native / Expo mobile app
 │   ├── src/
@@ -84,7 +84,7 @@ ClaudeCodeTest/
 
 ## Database Schema
 
-17 applied SQL migrations create the following tables:
+19 applied SQL migrations create the following tables:
 
 ### Core User Tables
 | Table | Purpose | Key Columns |
@@ -92,7 +92,6 @@ ClaudeCodeTest/
 | `users` | Auth identity | `id` (UUID PK), `phone_hash` (unique), `created_at` |
 | `profiles` | User profile data | `user_id` (FK), `display_name`, `birth_date`, `bio` (≤140 chars), `gender`, `looking_for`, `photos` (TEXT[], max 3) |
 | `visibility_states` | Current visibility mode | `user_id` (FK), `state` (invisible/visible) |
-| `otp_attempts` | Phone OTP tracking | `phone_hash`, `code_hash`, `expires_at`, `attempt_count`, `verified` — **table exists but phone auth not yet active** |
 | `revoked_tokens` | JWT invalidation list | Added in migration 010 |
 
 ### Location & Discovery
@@ -118,10 +117,8 @@ ClaudeCodeTest/
 ### Spatial Messages (Geo-anchored Posts)
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
-| `spatial_messages` | Location-pinned short posts | `user_id`, `content` (≤280 chars), `lat/lng`, `visibility_type` (public/circles/specific) |
+| `spatial_messages` | Location-pinned short posts | `user_id`, `content` (≤280 chars), `lat/lng`, `visibility_type` (public/specific) |
 | `spatial_message_targets` | Specific target users | `message_id`, `target_user_id` — used when `visibility_type = 'specific'` |
-
-> **Note:** `visibility_type = 'circles'` is defined in schema but "circles" as a social graph concept has no backing table yet — incomplete feature.
 
 ### Safety
 | Table | Purpose | Key Columns |
@@ -403,7 +400,7 @@ GET http://localhost:3000/health
 | Animated splash screen | ✅ Done | `RootNavigator` inline |
 | Selfie/liveness verification gate | ❌ Not built | In MVP scope but no implementation |
 | Push notifications | ❌ Not built | Firebase setup exists, no notification routes |
-| "Circles" social graph | ❌ Incomplete | `visibility_type = 'circles'` in schema, no implementation |
+| "Circles" social graph | 🗑 Removed | Dead path acknowledged and removed — migration 019 drops CHECK constraint; frontend option removed |
 | Read receipts / typing indicators | ❌ Not built | Not started |
 | Liveness/selfie verification | ❌ Not built | Not started |
 
@@ -413,9 +410,6 @@ GET http://localhost:3000/health
 
 | Issue | Severity | Details |
 |-------|---------|---------|
-| `bcrypt` unused | Low | In `package.json` but auth uses Firebase + JWT. Safe to remove. |
-| `otp_attempts` table unused | Low | Phone auth was planned (table created in migration 001) but no OTP routes exist. |
-| `visibility_type = 'circles'` incomplete | Medium | Schema allows it, no circles social graph backing data structure exists. Frontend should not allow selecting this option. |
 | No pagination on signals endpoints | Medium | GET `/api/v1/signals` — at scale with many pending signals this could be slow. |
 | No DELETE on bubbles | Low | Only `POST :id/close` (creator) and `POST :id/remove` (admin). Hard delete not needed for MVP. |
 | No read receipts | Low | Out of MVP scope. |
@@ -427,6 +421,10 @@ GET http://localhost:3000/health
 
 | Hash | Change |
 |------|--------|
+| `5a5625c` | chore(db): drop unused otp_attempts table (migration 020) |
+| `2e2bad2` | feat(frontend): remove 'My Circles' visibility option from DropMessageScreen |
+| `e2e7143` | feat(backend): drop 'circles' visibility_type — migration 019 + route + service |
+| `426d16f` | chore(backend): remove unused bcrypt dependency |
 | `6aa304f` | Add production env vars to EAS build profile |
 | `b588dd2` | Remove orphaned screens, dead UI components, malformed artifacts |
 | `2ce9942` | Fix map markers: use filled circles + JS-driven animations |
@@ -455,9 +453,8 @@ GET http://localhost:3000/health
 1. **Selfie/liveness verification gate** — in MVP scope, not built. Users currently have no verification step before becoming discoverable.
 2. **Push notifications** — Firebase infra is present. Signal received + message received notifications would unlock the core loop.
 3. **Signals pagination** — before any real users, add `LIMIT/OFFSET` or cursor pagination to `GET /api/v1/signals`.
-4. **OTP / phone auth** — decide: activate or permanently remove the `otp_attempts` table.
-5. **Circles feature** — either build the social graph (contacts/friends who form a circle) or remove `visibility_type = 'circles'` from the schema to avoid dead code.
-6. **Release readiness** — EAS build profile has production vars (`6aa304f`). Need: App Store / Play Store assets, privacy policy, liveness review.
+4. **Release readiness** — EAS build profile has production vars (`6aa304f`). Need: App Store / Play Store assets, privacy policy, liveness review.
+5. **Prod migration run** — migrations 019 and 020 are committed but not yet applied to Neon. Pre-flight: `SELECT COUNT(*) FROM spatial_messages WHERE visibility_type = 'circles';` must return 0 before running `npm run migrate` against production.
 
 ---
 
