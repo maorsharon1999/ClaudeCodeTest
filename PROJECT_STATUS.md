@@ -32,7 +32,7 @@ ClaudeCodeTest/
 │   │   │   ├── pool.js      — PostgreSQL connection pool (max 10)
 │   │   │   ├── migrate.js   — Migration runner
 │   │   │   ├── firebase.js  — Firebase Admin SDK init
-│   │   │   └── migrations/  — 19 SQL migration files (001–020)
+│   │   │   └── migrations/  — 20 SQL migration files (001–021)
 │   └── package.json
 ├── frontend/         — React Native / Expo mobile app
 │   ├── src/
@@ -84,7 +84,7 @@ ClaudeCodeTest/
 
 ## Database Schema
 
-19 applied SQL migrations create the following tables:
+20 applied SQL migrations create the following tables:
 
 ### Core User Tables
 | Table | Purpose | Key Columns |
@@ -93,6 +93,7 @@ ClaudeCodeTest/
 | `profiles` | User profile data | `user_id` (FK), `display_name`, `birth_date`, `bio` (≤140 chars), `gender`, `looking_for`, `photos` (TEXT[], max 3) |
 | `visibility_states` | Current visibility mode | `user_id` (FK), `state` (invisible/visible) |
 | `revoked_tokens` | JWT invalidation list | Added in migration 010 |
+| `fcm_tokens` | Device push tokens | `user_id`, `token`, `platform` (android/ios/web), unique on (user_id, token) — migration 021 |
 
 ### Location & Discovery
 | Table | Purpose | Key Columns |
@@ -187,6 +188,10 @@ Base URL: `http://[host]:3000/api/v1`
 - `GET /api/v1/bubbles/:id/messages` — get bubble group messages
 - `POST /api/v1/bubbles/:id/messages` — send message to bubble
 - `POST /api/v1/bubbles/:id/remove` — admin remove bubble
+
+### Devices — `/api/v1/devices`
+- `POST /api/v1/devices/token` — register or refresh a push token (android/ios/web)
+- `DELETE /api/v1/devices/token` — unregister a push token on logout
 
 ### Spatial Messages — `/api/v1/spatial-messages`
 - `POST /api/v1/spatial-messages` — drop a geo-anchored message
@@ -399,7 +404,7 @@ GET http://localhost:3000/health
 | Map with animated user markers | ✅ Done | `RadarHomeScreen`, `UserPhotoMarker`, animated rings |
 | Animated splash screen | ✅ Done | `RootNavigator` inline |
 | Selfie/liveness verification gate | ❌ Not built | In MVP scope but no implementation |
-| Push notifications | ❌ Not built | Firebase setup exists, no notification routes |
+| Push notifications | ✅ Done | FCM via expo-notifications; fcm_tokens table; notify on signal/DM/bubble; tap routing |
 | "Circles" social graph | 🗑 Removed | Dead path acknowledged and removed — migration 019 drops CHECK constraint; frontend option removed |
 | Read receipts / typing indicators | ❌ Not built | Not started |
 | Liveness/selfie verification | ❌ Not built | Not started |
@@ -421,6 +426,9 @@ GET http://localhost:3000/health
 
 | Hash | Change |
 |------|--------|
+| `92fbc3e` | feat(frontend): push notification registration and tap handling |
+| `4a3ea13` | feat(backend): wire push notifications into signals, threads, bubbles |
+| `ed257b3` | feat(backend): add push notification infrastructure (migration 021, devices route, notify.js) |
 | `5a5625c` | chore(db): drop unused otp_attempts table (migration 020) |
 | `2e2bad2` | feat(frontend): remove 'My Circles' visibility option from DropMessageScreen |
 | `e2e7143` | feat(backend): drop 'circles' visibility_type — migration 019 + route + service |
@@ -451,8 +459,7 @@ GET http://localhost:3000/health
 ## What's Next (Prioritized)
 
 1. **Selfie/liveness verification gate** — in MVP scope, not built. Users currently have no verification step before becoming discoverable.
-2. **Push notifications** — Firebase infra is present. Signal received + message received notifications would unlock the core loop.
-3. **Signals pagination** — before any real users, add `LIMIT/OFFSET` or cursor pagination to `GET /api/v1/signals`.
+2. **Signals pagination** — before any real users, add `LIMIT/OFFSET` or cursor pagination to `GET /api/v1/signals`.
 4. **Release readiness** — EAS build profile has production vars (`6aa304f`). Need: App Store / Play Store assets, privacy policy, liveness review.
 5. **Prod migration run** — migrations 019 and 020 are committed but not yet applied to Neon. Pre-flight: `SELECT COUNT(*) FROM spatial_messages WHERE visibility_type = 'circles';` must return 0 before running `npm run migrate` against production.
 
