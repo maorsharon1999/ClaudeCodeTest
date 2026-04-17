@@ -8,6 +8,8 @@ const {
   getIncoming,
   getOutgoing,
 } = require('../services/signalService');
+const { sendToUser } = require('../services/notify');
+const pool = require('../db/pool');
 
 const router = express.Router();
 router.use(authRequired);
@@ -40,7 +42,20 @@ router.post('/', signalSendLimiter, async (req, res, next) => {
       return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'recipient_id is required.' } });
     }
     const signal = await sendSignal(req.userId, recipient_id);
-    return res.status(201).json({ signal });
+    res.status(201).json({ signal });
+
+    try {
+      const pr = await pool.query('SELECT display_name FROM profiles WHERE user_id = $1', [req.userId]);
+      const name = pr.rows[0]?.display_name || 'Someone';
+      await sendToUser(recipient_id, {
+        title: 'New Signal',
+        body: `${name} sent you a signal`,
+        data: { type: 'signal_received', signal_id: signal.id },
+      });
+    } catch (notifyErr) {
+      console.error('Signal notification failed:', notifyErr.message);
+    }
+    return;
   } catch (err) {
     if (err.code === 'VALIDATION_ERROR') {
       return res.status(400).json({ error: { code: err.code, message: err.message } });
@@ -67,7 +82,28 @@ router.put('/:id', signalRespondLimiter, async (req, res, next) => {
   try {
     const { action } = req.body;
     const updated = await respondSignal(req.params.id, req.userId, action);
-    return res.status(200).json({ signal: updated });
+    res.status(200).json({ signal: updated });
+
+    if (action === 'approve') {
+      try {
+        const [approverPr, signalRow] = await Promise.all([
+          pool.query('SELECT display_name FROM profiles WHERE user_id = $1', [req.userId]),
+          pool.query('SELECT sender_id FROM signals WHERE id = $1', [req.params.id]),
+        ]);
+        const approverName = approverPr.rows[0]?.display_name || 'Someone';
+        const senderId = signalRow.rows[0]?.sender_id;
+        if (senderId) {
+          await sendToUser(senderId, {
+            title: 'Signal Approved!',
+            body: `${approverName} approved your signal`,
+            data: { type: 'signal_approved', signal_id: updated.id },
+          });
+        }
+      } catch (notifyErr) {
+        console.error('Signal approval notification failed:', notifyErr.message);
+      }
+    }
+    return;
   } catch (err) {
     if (err.code === 'VALIDATION_ERROR') {
       return res.status(400).json({ error: { code: err.code, message: err.message } });

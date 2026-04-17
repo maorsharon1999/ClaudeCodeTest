@@ -2,6 +2,8 @@
 const express   = require('express');
 const rateLimit = require('express-rate-limit');
 const { authRequired } = require('../middleware/auth');
+const { sendToUser, sendToUsers } = require('../services/notify');
+const pool = require('../db/pool');
 const {
   createBubble,
   getBubble,
@@ -90,7 +92,26 @@ router.get('/:id', async (req, res, next) => {
 router.post('/:id/join', async (req, res, next) => {
   try {
     const member = await joinBubble(req.userId, req.params.id);
-    return res.status(200).json({ member });
+    res.status(200).json({ member });
+
+    try {
+      const [joinerPr, bubbleRow] = await Promise.all([
+        pool.query('SELECT display_name FROM profiles WHERE user_id = $1', [req.userId]),
+        pool.query('SELECT creator_id, title FROM bubbles WHERE id = $1', [req.params.id]),
+      ]);
+      const joinerName = joinerPr.rows[0]?.display_name || 'Someone';
+      const bubble = bubbleRow.rows[0];
+      if (bubble && bubble.creator_id !== req.userId) {
+        await sendToUser(bubble.creator_id, {
+          title: bubble.title,
+          body: `${joinerName} joined your bubble`,
+          data: { type: 'bubble_join', bubble_id: req.params.id },
+        });
+      }
+    } catch (notifyErr) {
+      console.error('Bubble join notification failed:', notifyErr.message);
+    }
+    return;
   } catch (err) {
     next(err);
   }
@@ -121,7 +142,30 @@ router.post('/:id/messages', messageLimiter, async (req, res, next) => {
   try {
     const { body } = req.body;
     const message = await sendMessage(req.userId, req.params.id, body);
-    return res.status(201).json({ message });
+    res.status(201).json({ message });
+
+    try {
+      const [senderPr, bubbleRow, membersRow] = await Promise.all([
+        pool.query('SELECT display_name FROM profiles WHERE user_id = $1', [req.userId]),
+        pool.query('SELECT title FROM bubbles WHERE id = $1', [req.params.id]),
+        pool.query(
+          'SELECT user_id FROM bubble_members WHERE bubble_id = $1 AND left_at IS NULL',
+          [req.params.id]
+        ),
+      ]);
+      const senderName = senderPr.rows[0]?.display_name || 'Someone';
+      const bubbleTitle = bubbleRow.rows[0]?.title || 'A bubble';
+      const memberIds = membersRow.rows.map(r => r.user_id);
+      const preview = body && body.length > 80 ? body.slice(0, 77) + '...' : (body || '');
+      await sendToUsers(memberIds, {
+        title: bubbleTitle,
+        body: `${senderName}: ${preview}`,
+        data: { type: 'bubble_message', bubble_id: req.params.id },
+      }, req.userId);
+    } catch (notifyErr) {
+      console.error('Bubble message notification failed:', notifyErr.message);
+    }
+    return;
   } catch (err) {
     next(err);
   }

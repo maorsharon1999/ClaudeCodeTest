@@ -4,6 +4,8 @@ const multer           = require('multer');
 const rateLimit        = require('express-rate-limit');
 const { v4: uuidv4 }   = require('uuid');
 const { authRequired } = require('../middleware/auth');
+const { sendToUser }   = require('../services/notify');
+const pool             = require('../db/pool');
 const { getThreadsForUser, getMessages, sendMessage, addVoiceNote } = require('../services/chatService');
 const storageService   = require('../services/storageService');
 
@@ -74,7 +76,28 @@ router.post('/:thread_id/messages', messageSendLimiter, async (req, res, next) =
   try {
     const { body } = req.body;
     const message = await sendMessage(req.params.thread_id, req.userId, body);
-    return res.status(201).json({ message });
+    res.status(201).json({ message });
+
+    try {
+      const [senderPr, threadRow] = await Promise.all([
+        pool.query('SELECT display_name FROM profiles WHERE user_id = $1', [req.userId]),
+        pool.query('SELECT user_a_id, user_b_id FROM chat_threads WHERE id = $1', [req.params.thread_id]),
+      ]);
+      const senderName = senderPr.rows[0]?.display_name || 'Someone';
+      const t = threadRow.rows[0];
+      if (t) {
+        const recipientId = t.user_a_id === req.userId ? t.user_b_id : t.user_a_id;
+        const preview = body && body.length > 100 ? body.slice(0, 97) + '...' : (body || '');
+        await sendToUser(recipientId, {
+          title: senderName,
+          body: preview,
+          data: { type: 'dm_received', thread_id: req.params.thread_id },
+        });
+      }
+    } catch (notifyErr) {
+      console.error('DM notification failed:', notifyErr.message);
+    }
+    return;
   } catch (err) {
     if (err.code === 'VALIDATION_ERROR') return res.status(400).json({ error: { code: err.code, message: err.message } });
     if (err.code === 'NOT_FOUND') return res.status(404).json({ error: { code: err.code, message: err.message } });
