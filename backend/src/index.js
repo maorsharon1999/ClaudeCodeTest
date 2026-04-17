@@ -16,7 +16,9 @@ const threadsRoutes    = require('./routes/threads');
 const blocksRoutes     = require('./routes/blocks');
 const reportsRoutes    = require('./routes/reports');
 const internalRoutes   = require('./routes/internal');
-const bubblesRoutes    = require('./routes/bubbles');
+const bubblesRoutes          = require('./routes/bubbles');
+const spatialMessagesRoutes  = require('./routes/spatialMessages');
+const devicesRoutes          = require('./routes/devices');
 const { errorHandler } = require('./middleware/errorHandler');
 const pool             = require('./db/pool');
 
@@ -39,7 +41,9 @@ app.use('/api/v1/threads',   threadsRoutes);
 app.use('/api/v1/blocks',    blocksRoutes);
 app.use('/api/v1/reports',   reportsRoutes);
 app.use('/internal',         internalRoutes);
-app.use('/api/v1/bubbles',   bubblesRoutes);
+app.use('/api/v1/bubbles',           bubblesRoutes);
+app.use('/api/v1/spatial-messages', spatialMessagesRoutes);
+app.use('/api/v1/devices',         devicesRoutes);
 
 // 404 handler
 app.use((_req, res) => {
@@ -51,7 +55,7 @@ app.use(errorHandler);
 
 if (require.main === module) {
   const startupCheck = new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error('DB health check timed out after 5s')), 5000);
+    const t = setTimeout(() => reject(new Error('DB health check timed out after 15s')), 15000);
     pool.query('SELECT 1').then(() => { clearTimeout(t); resolve(); }).catch(reject);
   });
   startupCheck
