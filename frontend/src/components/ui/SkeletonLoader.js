@@ -58,7 +58,7 @@ export default SkeletonPulse;
 
 const styles = StyleSheet.create({
   skeleton: {
-    backgroundColor: theme.colors.bgElevated,
+    backgroundColor: '#C5D2DC',
   },
   card: {
     backgroundColor: theme.colors.bgSurface,

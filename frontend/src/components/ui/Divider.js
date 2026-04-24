@@ -9,6 +9,6 @@ export default function Divider({ style }) {
 const styles = StyleSheet.create({
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: theme.colors.borderDefault,
+    backgroundColor: 'rgba(14,26,36,0.10)',
   },
 });

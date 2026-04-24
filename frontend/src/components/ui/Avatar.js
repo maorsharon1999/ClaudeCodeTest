@@ -1,43 +1,19 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
-import { theme } from '../../theme';
+import AvatarBubble from '../visual/AvatarBubble';
 
-export default function Avatar({ uri, name, size = 44, style }) {
-  const initial = (name || '?')[0].toUpperCase();
-  const borderRadius = size / 2;
-
-  if (uri) {
-    return (
-      <Image
-        source={{ uri }}
-        style={[{ width: size, height: size, borderRadius }, style]}
-      />
-    );
-  }
+export default function Avatar({ uri, imageUri, name, initials, size = 44, tone = 'a', style }) {
+  // Accept both uri (legacy) and imageUri (new) prop names
+  const resolvedImageUri = imageUri || uri || null;
+  // Derive initials from name if not explicitly provided
+  const resolvedInitials = initials || (name ? (name[0] || '').toUpperCase() : undefined);
 
   return (
-    <View
-      style={[
-        styles.fallback,
-        { width: size, height: size, borderRadius },
-        style,
-      ]}
-    >
-      <Text style={[styles.initial, { fontSize: size * 0.4 }]}>{initial}</Text>
-    </View>
+    <AvatarBubble
+      size={size}
+      imageUri={resolvedImageUri}
+      initials={resolvedInitials}
+      tone={tone}
+      style={style}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  fallback: {
-    backgroundColor: theme.colors.bgElevated,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.borderDefault,
-  },
-  initial: {
-    fontWeight: '700',
-    color: theme.colors.textMuted,
-  },
-});

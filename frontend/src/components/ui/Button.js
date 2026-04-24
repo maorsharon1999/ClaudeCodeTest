@@ -1,34 +1,22 @@
-import React, { useRef } from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, Animated, StyleSheet } from 'react-native';
+import React from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import GlassButton from '../visual/GlassButton';
 import { theme } from '../../theme';
 
-const VARIANTS = {
-  primary: {
-    bg: theme.colors.brand,
-    text: '#fff',
-    border: 'transparent',
-  },
-  secondary: {
-    bg: theme.colors.brandMuted,
-    text: theme.colors.brand,
-    border: 'transparent',
-  },
-  outline: {
-    bg: 'transparent',
-    text: theme.colors.textPrimary,
-    border: theme.colors.borderDefault,
-  },
-  ghost: {
-    bg: 'transparent',
-    text: theme.colors.textSecondary,
-    border: 'transparent',
-  },
-  danger: {
-    bg: 'rgba(255,92,92,0.12)',
-    text: theme.colors.error,
-    border: theme.colors.error,
-  },
-};
+// Map legacy variant names to GlassButton variants
+function resolveVariant(variant) {
+  if (variant === 'primary') return 'primary';
+  if (variant === 'secondary' || variant === 'ghost' || variant === 'outline') return 'ghost';
+  if (variant === 'danger') return 'ink';
+  return 'primary';
+}
+
+// Map legacy size names to GlassButton sizes
+function resolveSize(size) {
+  if (size === 'sm') return 'sm';
+  if (size === 'lg') return 'lg';
+  return 'md';
+}
 
 export default function Button({
   title,
@@ -39,61 +27,36 @@ export default function Button({
   disabled = false,
   icon,
   style,
+  children,
 }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const v = VARIANTS[variant] || VARIANTS.primary;
+  const glassVariant = resolveVariant(variant);
+  const glassSize = resolveSize(size);
 
-  const onPressIn = () =>
-    Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, speed: 40, bounciness: 0 }).start();
-  const onPressOut = () =>
-    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 6 }).start();
-
-  const height = size === 'sm' ? 40 : size === 'lg' ? 56 : 48;
-  const fontSize = size === 'sm' ? 14 : size === 'lg' ? 17 : 15;
+  // For danger variant, override the ink gradient tint via a style override
+  const dangerOverride =
+    variant === 'danger'
+      ? { backgroundColor: 'rgba(180,60,60,0.85)' }
+      : undefined;
 
   return (
-    <Animated.View style={[{ transform: [{ scale }] }, style]}>
-      <TouchableOpacity
-        style={[
-          styles.base,
-          {
-            height,
-            backgroundColor: v.bg,
-            borderColor: v.border,
-            borderWidth: v.border !== 'transparent' ? 1 : 0,
-            opacity: disabled ? 0.45 : 1,
-          },
-        ]}
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        disabled={disabled || loading}
-        accessibilityRole="button"
-      >
-        {loading ? (
-          <ActivityIndicator color={v.text} size="small" />
-        ) : (
-          <>
-            {icon}
-            <Text style={[styles.text, { fontSize, color: v.text, marginLeft: icon ? 8 : 0 }]}>
-              {title}
-            </Text>
-          </>
-        )}
-      </TouchableOpacity>
-    </Animated.View>
+    <GlassButton
+      variant={glassVariant}
+      size={glassSize}
+      onPress={onPress}
+      disabled={disabled || loading}
+      style={[dangerOverride, style]}
+    >
+      {loading ? (
+        <ActivityIndicator
+          color={glassVariant === 'ink' ? 'rgba(255,255,255,0.9)' : theme.colors.ink}
+          size="small"
+        />
+      ) : (
+        <>
+          {icon ? <View style={{ marginRight: 6 }}>{icon}</View> : null}
+          {title || children || null}
+        </>
+      )}
+    </GlassButton>
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: theme.radii.md,
-    paddingHorizontal: 20,
-  },
-  text: {
-    fontWeight: '600',
-  },
-});

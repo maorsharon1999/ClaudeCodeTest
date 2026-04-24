@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Text, StyleSheet } from 'react-native';
+import { Animated, Text, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../theme';
 
@@ -24,8 +24,10 @@ export default function Toast({ message, visible, icon, duration = 2500 }) {
 
   return (
     <Animated.View style={[styles.toast, { opacity, transform: [{ translateY }] }]}>
+      {/* Glass tint overlay */}
+      <View style={styles.tint} pointerEvents="none" />
       {icon ? (
-        <Ionicons name={icon} size={16} color={theme.colors.textPrimary} style={styles.icon} />
+        <Ionicons name={icon} size={16} color={theme.colors.ink} style={styles.icon} />
       ) : null}
       <Text style={styles.text}>{message}</Text>
     </Animated.View>
@@ -38,21 +40,29 @@ const styles = StyleSheet.create({
     bottom: 60,
     left: 20,
     right: 20,
-    backgroundColor: theme.colors.bgElevated,
+    backgroundColor: 'rgba(255,255,255,0.85)',
     borderRadius: theme.radii.md,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.borderDefault,
+    borderColor: 'rgba(255,255,255,0.60)',
+    overflow: 'hidden',
     ...theme.shadows.card,
+  },
+  tint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderRadius: theme.radii.md,
   },
   icon: {
     marginRight: 8,
+    zIndex: 1,
   },
   text: {
     flex: 1,
     fontSize: 14,
-    color: theme.colors.textPrimary,
+    color: theme.colors.ink,
+    zIndex: 1,
   },
 });

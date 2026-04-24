@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Text, StyleSheet } from 'react-native';
+import { Animated, Text, View, StyleSheet } from 'react-native';
 import { theme } from '../theme';
 
 export default function Toast({ message, visible }) {
@@ -17,6 +17,8 @@ export default function Toast({ message, visible }) {
 
   return (
     <Animated.View style={[styles.toast, { opacity }]} pointerEvents="none">
+      {/* Glass tint overlay */}
+      <View style={styles.tint} pointerEvents="none" />
       <Text style={styles.toastText}>{message}</Text>
     </Animated.View>
   );
@@ -27,14 +29,24 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 80,
     alignSelf: 'center',
-    backgroundColor: theme.colors.toastBg,
+    backgroundColor: 'rgba(255,255,255,0.85)',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: theme.radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.60)',
     zIndex: 999,
+    overflow: 'hidden',
+    ...theme.shadows.card,
+  },
+  tint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderRadius: theme.radii.md,
   },
   toastText: {
-    color: '#fff',
+    color: theme.colors.ink,
     fontSize: 14,
+    zIndex: 1,
   },
 });
