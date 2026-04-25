@@ -10,11 +10,17 @@ import {
   Animated,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import client from '../api/client';
 import { resolvePhotoUrl } from '../lib/photoUrl';
 import { theme } from '../theme';
-import { Header, Avatar, EmptyState, ErrorState } from '../components/ui';
+import { Avatar, EmptyState, ErrorState } from '../components/ui';
 import { fadeInUp, fadeInUpStyle } from '../utils/animations';
+import SkyBackground from '../components/visual/SkyBackground';
+import BubbleField from '../components/visual/BubbleField';
+import GlassCard from '../components/visual/GlassCard';
+import GlassButton from '../components/visual/GlassButton';
+import ScreenHeader from '../components/visual/ScreenHeader';
 
 async function getBlockedUsers() {
   const { data } = await client.get('/blocks');

@@ -1,7 +1,9 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, Animated, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Button } from '../../components/ui';
+import { View, Text, Animated, StyleSheet, TouchableOpacity } from 'react-native';
+import SkyBackground from '../../components/visual/SkyBackground';
+import BubbleField from '../../components/visual/BubbleField';
+import LogoBubble from '../../components/visual/LogoBubble';
+import GlassButton from '../../components/visual/GlassButton';
 import { theme } from '../../theme';
 
 export default function WelcomeScreen({ navigation }) {
@@ -16,86 +18,113 @@ export default function WelcomeScreen({ navigation }) {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="radio" size={48} color={theme.colors.brand} />
+    <SkyBackground variant="sky">
+      <BubbleField />
+      <Animated.View style={[styles.inner, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
+        {/* Logo top */}
+        <View style={styles.logoWrap}>
+          <LogoBubble size={170} />
         </View>
-        <Text style={styles.title}>Welcome to Bubble</Text>
-        <Text style={styles.subtitle}>
-          Discover what's happening around you.{'\n'}
-          Join bubbles, meet people, share moments.
-        </Text>
-      </Animated.View>
 
-      <View style={styles.footer}>
-        <Button
-          title="Get Started"
-          onPress={() => navigation.navigate('IntroCarousel')}
-          size="lg"
-        />
-        <View style={styles.progress}>
-          {[0,1,2,3,4,5].map((i) => (
-            <View key={i} style={[styles.dot, i === 0 && styles.dotActive]} />
-          ))}
+        {/* Headline */}
+        <View style={styles.hero}>
+          <Text style={styles.title}>Your world,{'\n'}in bubbles.</Text>
+          <Text style={styles.subtitle}>
+            Pop into a moment. Float between rooms.{'\n'}Meet the people right around you.
+          </Text>
         </View>
-      </View>
-    </View>
+
+        {/* CTA bottom */}
+        <View style={styles.footer}>
+          <GlassButton
+            label="Get Started"
+            variant="primary"
+            size="lg"
+            onPress={() => navigation.navigate('IntroCarousel')}
+            style={styles.cta}
+          />
+          <View style={styles.progress}>
+            {[0,1,2,3,4,5].map((i) => (
+              <View
+                key={i}
+                style={[
+                  styles.dot,
+                  i === 0 && styles.dotActive,
+                  i === 0 && { backgroundColor: theme.colors.skyDeep },
+                ]}
+              />
+            ))}
+          </View>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('IntroCarousel')}
+            accessibilityRole="button"
+          >
+            <Text style={styles.skipLabel}>SKIP FOR NOW</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+    </SkyBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  inner: {
     flex: 1,
-    backgroundColor: theme.colors.bgDeep,
-    justifyContent: 'space-between',
-    padding: 24,
+    paddingHorizontal: 32,
     paddingTop: 80,
+    paddingBottom: 40,
+    zIndex: 2,
   },
-  content: {
+  logoWrap: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 40,
+  },
+  hero: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  iconCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: theme.colors.brandMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 32,
-    ...theme.shadows.glow,
   },
   title: {
-    ...theme.typography.displayMd,
-    color: theme.colors.textPrimary,
-    textAlign: 'center',
+    fontSize: 44,
+    fontWeight: '800',
+    letterSpacing: -1.2,
+    color: theme.colors.ink,
     marginBottom: 16,
+    lineHeight: 48,
   },
   subtitle: {
-    fontSize: 16,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 26,
+    color: theme.colors.inkSoft,
   },
   footer: {
-    paddingBottom: 32,
+    gap: 14,
+    marginTop: 20,
+  },
+  cta: {
+    width: '100%',
   },
   progress: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     gap: 8,
-    marginTop: 20,
+    marginTop: 6,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: theme.colors.bgElevated,
+    backgroundColor: theme.colors.inkGhost,
   },
   dotActive: {
-    backgroundColor: theme.colors.brand,
-    width: 24,
+    width: 20,
+  },
+  skipLabel: {
+    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 2,
+    color: theme.colors.inkFaint,
+    marginTop: 6,
   },
 });

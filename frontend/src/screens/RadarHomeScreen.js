@@ -222,7 +222,7 @@ export default function RadarHomeScreen({ navigation }) {
   if (!myLocation) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color={theme.colors.brand} />
+        <ActivityIndicator size="large" color={theme.colors.skyDeep} />
         <Text style={styles.loadingText}>Getting your location...</Text>
       </View>
     );
@@ -285,8 +285,8 @@ export default function RadarHomeScreen({ navigation }) {
               key={`bubble-${u.id || u.user_id}`}
               center={uWobble}
               radius={45}
-              fillColor="rgba(130,200,255,0.20)"
-              strokeColor="rgba(0,140,230,0.50)"
+              fillColor="rgba(159,196,232,0.20)"
+              strokeColor="rgba(93,144,191,0.50)"
               strokeWidth={2.5}
               zIndex={3}
             />
@@ -385,45 +385,48 @@ export default function RadarHomeScreen({ navigation }) {
               <Ionicons
                 name={selectedMessage.is_unlocked ? 'chatbubble' : 'lock-closed'}
                 size={16}
-                color={selectedMessage.is_unlocked ? theme.colors.brand : theme.colors.textMuted}
+                color={selectedMessage.is_unlocked ? theme.colors.skyDeep : theme.colors.inkMuted}
               />
               <Text style={styles.msgAuthor}>{selectedMessage.author_name || 'Anonymous'}</Text>
               <TouchableOpacity onPress={() => setSelectedMessage(null)} style={styles.msgClose}>
-                <Ionicons name="close" size={18} color={theme.colors.textSecondary} />
+                <Ionicons name="close" size={18} color={theme.colors.inkMuted} />
               </TouchableOpacity>
             </View>
             {selectedMessage.is_unlocked ? (
               <Text style={styles.msgContent}>{selectedMessage.content}</Text>
             ) : (
-              <Text style={styles.msgLocked}>🔒 Get within 50m to read this message</Text>
+              <Text style={styles.msgLocked}>Get within 50m to read this message</Text>
             )}
           </View>
         </TouchableOpacity>
       )}
 
-      {/* Top bar overlay */}
+      {/* Top bar overlay — glass card row matching design reference */}
       <View style={styles.topBar} pointerEvents="box-none">
-        <View>
-          <Text style={styles.wordmark}>Bubble</Text>
-          <Text style={styles.greeting}>{greeting}</Text>
-        </View>
-        <View style={styles.topActions}>
-          <IconButton
-            name={isVisible ? 'eye-outline' : 'eye-off-outline'}
-            size={20}
-            color={isVisible ? theme.colors.brand : theme.colors.textMuted}
-            onPress={handleVisibilityToggle}
-            bgColor={theme.colors.bgSurface}
-            buttonSize={38}
-          />
-          <IconButton
-            name="notifications-outline"
-            size={20}
-            color={theme.colors.textSecondary}
-            onPress={() => navigation.navigate('InboxStack')}
-            bgColor={theme.colors.bgSurface}
-            buttonSize={38}
-          />
+        <View style={styles.topBarCard}>
+          <View>
+            <Text style={styles.wordmark}>Bubble</Text>
+            <Text style={styles.greeting}>{greeting}</Text>
+          </View>
+          <View style={styles.topActions}>
+            <TouchableOpacity
+              style={[styles.visibilityChip, isVisible && styles.visibilityChipActive]}
+              onPress={handleVisibilityToggle}
+            >
+              <View style={[styles.visibilityDot, { backgroundColor: isVisible ? theme.colors.live : theme.colors.inkFaint }]} />
+              <Text style={[styles.visibilityChipText, isVisible && styles.visibilityChipTextActive]}>
+                {isVisible ? 'Visible' : 'Hidden'}
+              </Text>
+            </TouchableOpacity>
+            <IconButton
+              name="notifications-outline"
+              size={20}
+              color={theme.colors.inkMuted}
+              onPress={() => navigation.navigate('InboxStack')}
+              bgColor="rgba(255,255,255,0.65)"
+              buttonSize={38}
+            />
+          </View>
         </View>
       </View>
 
@@ -447,7 +450,7 @@ export default function RadarHomeScreen({ navigation }) {
                 <Ionicons
                   name={iconName}
                   size={13}
-                  color={active ? theme.colors.brand : theme.colors.textMuted}
+                  color={active ? theme.colors.skyDeep : theme.colors.inkMuted}
                 />
                 <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
                   {cat}
@@ -462,9 +465,9 @@ export default function RadarHomeScreen({ navigation }) {
       <IconButton
         name="locate-outline"
         size={22}
-        color={theme.colors.brand}
+        color={theme.colors.skyDeep}
         onPress={centerOnMe}
-        bgColor={theme.colors.bgSurface}
+        bgColor="rgba(255,255,255,0.82)"
         style={styles.locateBtn}
       />
 
@@ -505,7 +508,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
-    color: theme.colors.textMuted,
+    color: theme.colors.inkMuted,
     fontSize: 15,
   },
   topBar: {
@@ -513,26 +516,69 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
+    paddingTop: Platform.OS === 'ios' ? 52 : 20,
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+  },
+  topBarCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 56 : 24,
-    paddingHorizontal: 20,
-    paddingBottom: 12,
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    borderRadius: theme.radii.xl,
+    borderWidth: 1.5,
+    borderColor: theme.colors.glassBorder,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    ...theme.shadows.card,
   },
   wordmark: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: theme.colors.brand,
+    fontSize: 22,
+    fontWeight: '800',
+    color: theme.colors.skyDeep,
     letterSpacing: -0.5,
+  },
+  greeting: {
+    fontSize: 12,
+    color: theme.colors.inkMuted,
+    marginTop: 1,
   },
   topActions: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+  },
+  visibilityChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    height: 34,
+    paddingHorizontal: 12,
+    borderRadius: theme.radii.pill,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    borderWidth: 1.5,
+    borderColor: theme.colors.glassBorder,
+  },
+  visibilityChipActive: {
+    backgroundColor: 'rgba(90,185,146,0.15)',
+    borderColor: theme.colors.live,
+  },
+  visibilityDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  visibilityChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.inkMuted,
+  },
+  visibilityChipTextActive: {
+    color: theme.colors.live,
   },
   locateBtn: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 110,
     right: 16,
   },
   dismissOverlay: {
@@ -545,27 +591,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
   },
-  pulseRing: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 2,
-    borderColor: theme.colors.brand,
-    backgroundColor: 'transparent',
-  },
-  greeting: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    marginTop: 2,
-  },
   chipRowContainer: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 110 : 78,
+    top: Platform.OS === 'ios' ? 118 : 84,
     left: 0,
     right: 0,
   },
   chipRowContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     gap: 8,
   },
   filterChip: {
@@ -575,20 +608,60 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 11,
     borderRadius: theme.radii.pill,
-    borderWidth: 1,
-    borderColor: theme.colors.borderDefault,
-    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderWidth: 1.5,
+    borderColor: theme.colors.glassBorder,
+    backgroundColor: 'rgba(255,255,255,0.72)',
   },
   filterChipActive: {
-    borderColor: theme.colors.brand,
-    backgroundColor: theme.colors.brandMuted,
+    borderColor: theme.colors.skyDeep,
+    backgroundColor: 'rgba(93,144,191,0.12)',
   },
   filterChipText: {
     fontSize: 12,
-    color: theme.colors.textMuted,
+    color: theme.colors.inkMuted,
   },
   filterChipTextActive: {
-    color: theme.colors.brand,
+    color: theme.colors.skyDeep,
     fontWeight: '600',
+  },
+
+  // Spatial message popup
+  msgOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(14,26,36,0.18)',
+    justifyContent: 'flex-end',
+    paddingBottom: 120,
+    paddingHorizontal: 20,
+  },
+  msgCard: {
+    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderRadius: theme.radii.xl,
+    borderWidth: 1.5,
+    borderColor: theme.colors.glassBorder,
+    padding: 16,
+    ...theme.shadows.card,
+  },
+  msgCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  msgAuthor: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    color: theme.colors.ink,
+  },
+  msgClose: { padding: 4 },
+  msgContent: {
+    fontSize: 15,
+    color: theme.colors.ink,
+    lineHeight: 21,
+  },
+  msgLocked: {
+    fontSize: 14,
+    color: theme.colors.inkMuted,
+    fontStyle: 'italic',
   },
 });

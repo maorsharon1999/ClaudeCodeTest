@@ -11,6 +11,7 @@ import MapView, { Marker, Circle, Polygon, Polyline, PROVIDER_GOOGLE } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import { fadeInUp, fadeInUpStyle } from '../utils/animations';
+import GlassCard from '../components/visual/GlassCard';
 
 const MIN_RADIUS = 50;
 const MAX_RADIUS = 2000;
@@ -224,7 +225,7 @@ export default function CreateAreaScreen({ navigation, route }) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={theme.colors.textPrimary} />
+          <Ionicons name="arrow-back" size={22} color={theme.colors.ink} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Define Area</Text>
@@ -390,7 +391,7 @@ export default function CreateAreaScreen({ navigation, route }) {
       </View>
 
       {/* Bottom toolbar */}
-      <View style={styles.toolbar}>
+      <GlassCard style={styles.toolbar}>
         <View style={styles.modeRow}>
           {['circle', 'polygon', 'rectangle'].map(mode => (
             <TouchableOpacity
@@ -407,7 +408,7 @@ export default function CreateAreaScreen({ navigation, route }) {
                     : 'square-outline'
                 }
                 size={18}
-                color={shapeMode === mode ? theme.colors.brand : theme.colors.textMuted}
+                color={shapeMode === mode ? theme.colors.skyDeep : theme.colors.inkMuted}
               />
               <Text
                 style={[styles.modeBtnText, shapeMode === mode && styles.modeBtnTextActive]}
@@ -419,14 +420,14 @@ export default function CreateAreaScreen({ navigation, route }) {
         </View>
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.clearBtn} onPress={handleClear}>
-            <Ionicons name="refresh-outline" size={18} color={theme.colors.textMuted} />
+            <Ionicons name="refresh-outline" size={18} color={theme.colors.inkMuted} />
             <Text style={styles.clearBtnText}>Clear</Text>
           </TouchableOpacity>
 
           {/* Explicit close polygon button */}
           {showCloseBtn && (
             <TouchableOpacity style={styles.closeBtn} onPress={handleClosePolygon}>
-              <Ionicons name="checkmark-done-outline" size={18} color={theme.colors.cyan} />
+              <Ionicons name="checkmark-done-outline" size={18} color={theme.colors.mint} />
               <Text style={styles.closeBtnText}>Close</Text>
             </TouchableOpacity>
           )}
@@ -439,7 +440,7 @@ export default function CreateAreaScreen({ navigation, route }) {
             <Text style={styles.confirmBtnText}>Confirm Area</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </GlassCard>
     </Animated.View>
   );
 }
@@ -452,13 +453,13 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 56 : 24,
     paddingHorizontal: 16,
     paddingBottom: 12,
-    backgroundColor: theme.colors.bgDeep,
+    backgroundColor: 'rgba(238,241,245,0.92)',
     zIndex: 10,
   },
   backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: theme.colors.textPrimary },
-  headerSubtitle: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: theme.colors.ink },
+  headerSubtitle: { fontSize: 12, color: theme.colors.inkMuted, marginTop: 2 },
   map: { flex: 1 },
   userDot: {
     width: 10,
@@ -510,7 +511,7 @@ const styles = StyleSheet.create({
   },
   hintText: {
     backgroundColor: 'rgba(255,255,255,0.82)',
-    color: theme.colors.textSecondary,
+    color: theme.colors.inkMuted,
     fontSize: 12,
     paddingHorizontal: 14,
     paddingVertical: 6,
@@ -518,12 +519,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   toolbar: {
-    backgroundColor: theme.colors.bgElevated,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.borderDefault,
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    borderRadius: 0,
   },
   modeRow: {
     flexDirection: 'row',
@@ -539,15 +538,15 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: theme.radii.md,
     borderWidth: 1,
-    borderColor: theme.colors.borderDefault,
-    backgroundColor: theme.colors.bgSurface,
+    borderColor: theme.colors.glassBorder,
+    backgroundColor: theme.colors.glassTint,
   },
   modeBtnActive: {
-    borderColor: theme.colors.brand,
-    backgroundColor: theme.colors.brandMuted,
+    borderColor: theme.colors.skyDeep,
+    backgroundColor: 'rgba(93,144,191,0.12)',
   },
-  modeBtnText: { fontSize: 13, color: theme.colors.textMuted, fontWeight: '600' },
-  modeBtnTextActive: { color: theme.colors.brand },
+  modeBtnText: { fontSize: 13, color: theme.colors.inkMuted, fontWeight: '600' },
+  modeBtnTextActive: { color: theme.colors.skyDeep },
   actionRow: {
     flexDirection: 'row',
     gap: 10,
@@ -561,9 +560,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: theme.radii.md,
     borderWidth: 1,
-    borderColor: theme.colors.borderDefault,
+    borderColor: theme.colors.glassBorder,
+    backgroundColor: theme.colors.glassTint,
   },
-  clearBtnText: { color: theme.colors.textMuted, fontSize: 14, fontWeight: '600' },
+  clearBtnText: { color: theme.colors.inkMuted, fontSize: 14, fontWeight: '600' },
   closeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -573,17 +573,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: theme.radii.md,
     borderWidth: 1,
-    borderColor: theme.colors.cyan,
-    backgroundColor: 'rgba(0,201,167,0.1)',
+    borderColor: theme.colors.mint,
+    backgroundColor: 'rgba(159,212,194,0.15)',
   },
-  closeBtnText: { color: theme.colors.cyan, fontSize: 14, fontWeight: '600' },
+  closeBtnText: { color: theme.colors.mintDeep, fontSize: 14, fontWeight: '600' },
   confirmBtn: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: theme.radii.md,
-    backgroundColor: theme.colors.brand,
+    backgroundColor: theme.colors.skyDeep,
+    ...theme.shadows.buttonPress,
   },
   confirmBtnDisabled: { opacity: 0.4 },
   confirmBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },

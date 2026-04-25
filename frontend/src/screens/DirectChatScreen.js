@@ -19,6 +19,8 @@ import { resolvePhotoUrl } from '../lib/photoUrl';
 import { theme } from '../theme';
 import { Header, Avatar, EmptyState, Toast } from '../components/ui';
 import { fadeInUp, fadeInUpStyle } from '../utils/animations';
+import SkyBackground from '../components/visual/SkyBackground';
+import BubbleField from '../components/visual/BubbleField';
 
 const POLL_INTERVAL = 4000;
 
@@ -197,6 +199,8 @@ export default function DirectChatScreen({ route, navigation }) {
   }
 
   return (
+    <SkyBackground variant="sky">
+      <BubbleField seed={51} />
     <Animated.View style={[styles.flex, fadeInUpStyle(enterAnim)]}>
       <KeyboardAvoidingView
         style={styles.flex}
@@ -263,11 +267,12 @@ export default function DirectChatScreen({ route, navigation }) {
 
       <Toast message={toastMsg} visible={toastVisible} />
     </Animated.View>
+    </SkyBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: theme.colors.bgDeep },
+  flex: { flex: 1 },
   center: {
     flex: 1,
     justifyContent: 'center',
@@ -277,23 +282,24 @@ const styles = StyleSheet.create({
   headerRightBtn: { padding: 8 },
 
   // Messages
-  messagesContainer: { flex: 1, backgroundColor: theme.colors.bgDeep },
+  messagesContainer: { flex: 1 },
   messagesList: { padding: 16, paddingBottom: 8 },
   emptyList: { flex: 1, justifyContent: 'center' },
 
-  // Own message (right-aligned)
+  // Own message (right-aligned, skyDeep)
   ownRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     marginBottom: 12,
   },
   ownBubble: {
-    backgroundColor: theme.colors.brand,
-    borderRadius: theme.radii.md,
+    backgroundColor: theme.colors.skyDeep,
+    borderRadius: theme.radii.lg,
     borderBottomRightRadius: 4,
     paddingHorizontal: 14,
     paddingVertical: 9,
     maxWidth: '78%',
+    ...theme.shadows.card,
   },
   ownText: {
     fontSize: 15,
@@ -301,7 +307,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // Other message (left-aligned)
+  // Other message (left-aligned, glass white)
   otherRow: {
     flexDirection: 'row',
     marginBottom: 12,
@@ -312,22 +318,25 @@ const styles = StyleSheet.create({
   senderName: {
     fontSize: 12,
     fontWeight: '600',
-    color: theme.colors.textSecondary,
+    color: theme.colors.inkMuted,
     marginBottom: 4,
     marginLeft: 2,
   },
   otherBubble: {
-    backgroundColor: theme.colors.bgElevated,
-    borderRadius: theme.radii.md,
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    borderRadius: theme.radii.lg,
     borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
     paddingHorizontal: 14,
     paddingVertical: 9,
     alignSelf: 'flex-start',
     maxWidth: '78%',
+    ...theme.shadows.card,
   },
   otherText: {
     fontSize: 15,
-    color: theme.colors.textBody,
+    color: theme.colors.ink,
     lineHeight: 20,
   },
 
@@ -337,9 +346,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     padding: 10,
     paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.borderDefault,
-    backgroundColor: theme.colors.bgSurface,
+    borderTopWidth: 1.5,
+    borderTopColor: theme.colors.glassBorder,
+    backgroundColor: 'rgba(255,255,255,0.75)',
   },
   voiceBtn: {
     width: 40,
@@ -352,23 +361,24 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
     maxHeight: 100,
-    borderWidth: 1,
-    borderColor: theme.colors.borderDefault,
-    borderRadius: theme.radii.md,
-    paddingHorizontal: 12,
+    borderWidth: 1.5,
+    borderColor: theme.colors.glassBorder,
+    borderRadius: theme.radii.pill,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     fontSize: 15,
-    color: theme.colors.textPrimary,
-    backgroundColor: theme.colors.inputBg,
+    color: theme.colors.ink,
+    backgroundColor: 'rgba(255,255,255,0.55)',
   },
   sendBtn: {
     marginLeft: 8,
-    width: 40,
-    height: 40,
-    backgroundColor: theme.colors.brand,
-    borderRadius: theme.radii.md,
+    width: 42,
+    height: 42,
+    backgroundColor: theme.colors.skyDeep,
+    borderRadius: theme.radii.pill,
     justifyContent: 'center',
     alignItems: 'center',
+    ...theme.shadows.buttonPress,
   },
   sendBtnDisabled: { opacity: 0.4 },
 });

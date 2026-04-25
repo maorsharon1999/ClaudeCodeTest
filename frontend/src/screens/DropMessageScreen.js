@@ -13,9 +13,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import { Header } from '../components/ui';
 import { theme } from '../theme';
 import { createSpatialMessage } from '../api/spatialMessages';
+import SkyBackground from '../components/visual/SkyBackground';
+import BubbleField from '../components/visual/BubbleField';
+import GlassCard from '../components/visual/GlassCard';
+import GlassButton from '../components/visual/GlassButton';
+import GlassChip from '../components/visual/GlassChip';
+import ScreenHeader from '../components/visual/ScreenHeader';
+import SectionLabel from '../components/visual/SectionLabel';
 
 const MAX_CHARS = 280;
 
@@ -91,119 +97,110 @@ export default function DropMessageScreen({ navigation }) {
   const canSubmit = content.trim().length > 0 && !locating && !!location && !submitting;
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <Header title="Drop a Message" onBack={() => navigation.goBack()} />
-
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+    <SkyBackground variant="sky">
+      <BubbleField />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <Text style={styles.sectionLabel}>Your message</Text>
-        <View style={styles.inputWrapper}>
-          <TextInput
-            style={styles.input}
-            value={content}
-            onChangeText={(t) => setContent(t.slice(0, MAX_CHARS))}
-            placeholder="Write something for people nearby to discover..."
-            placeholderTextColor={theme.colors.textMuted}
-            multiline
-            maxLength={MAX_CHARS}
-            autoFocus
-          />
-          <Text style={[styles.charCount, remaining < 20 && styles.charCountWarning]}>
-            {remaining}
-          </Text>
-        </View>
+        <ScreenHeader
+          title="Drop a Message"
+          subtitle="Stays pinned here for 24h"
+          onBack={() => navigation.goBack()}
+        />
 
-        <Text style={styles.sectionLabel}>Who can read it?</Text>
-        {VISIBILITY_OPTIONS.map((opt) => (
-          <TouchableOpacity
-            key={opt.key}
-            style={[styles.visOption, visibility === opt.key && styles.visOptionSelected]}
-            onPress={() => setVisibility(opt.key)}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: visibility === opt.key }}
-          >
-            <View style={[styles.visIconBg, visibility === opt.key && styles.visIconBgSelected]}>
-              <Ionicons
-                name={opt.icon}
-                size={18}
-                color={visibility === opt.key ? '#fff' : theme.colors.brand}
-              />
-            </View>
-            <View style={styles.visText}>
-              <Text style={[styles.visLabel, visibility === opt.key && styles.visLabelSelected]}>
-                {opt.label}
-              </Text>
-              <Text style={styles.visDesc}>{opt.desc}</Text>
-            </View>
-            {visibility === opt.key && (
-              <Ionicons name="checkmark-circle" size={20} color={theme.colors.brand} />
-            )}
-          </TouchableOpacity>
-        ))}
-
-        <View style={styles.locationRow}>
-          <Ionicons
-            name={locating ? 'locate-outline' : 'location'}
-            size={16}
-            color={locating ? theme.colors.textMuted : theme.colors.success}
-          />
-          <Text style={styles.locationText}>
-            {locating ? 'Acquiring location…' : 'Location captured'}
-          </Text>
-          {locating && <ActivityIndicator size="small" color={theme.colors.textMuted} style={{ marginLeft: 6 }} />}
-        </View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
-          onPress={handleSubmit}
-          disabled={!canSubmit}
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {submitting
-            ? <ActivityIndicator color="#fff" />
-            : (
-              <>
-                <Ionicons name="pin" size={18} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.submitLabel}>Drop Message</Text>
-              </>
-            )
-          }
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+          <SectionLabel style={styles.sectionLabel}>Your message</SectionLabel>
+          <GlassCard style={styles.inputCard}>
+            <TextInput
+              style={styles.input}
+              value={content}
+              onChangeText={(t) => setContent(t.slice(0, MAX_CHARS))}
+              placeholder="Write something for people nearby to discover..."
+              placeholderTextColor={theme.colors.inkMuted}
+              multiline
+              maxLength={MAX_CHARS}
+              autoFocus
+            />
+            <Text style={[styles.charCount, remaining < 20 && styles.charCountWarning]}>
+              {remaining}
+            </Text>
+          </GlassCard>
+
+          <SectionLabel style={styles.sectionLabel}>Who can read it?</SectionLabel>
+          {VISIBILITY_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.key}
+              onPress={() => setVisibility(opt.key)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: visibility === opt.key }}
+              style={styles.visTouch}
+            >
+              <GlassCard style={[styles.visOption, visibility === opt.key && styles.visOptionSelected]}>
+                <View style={[styles.visIconBg, visibility === opt.key && styles.visIconBgSelected]}>
+                  <Ionicons
+                    name={opt.icon}
+                    size={18}
+                    color={visibility === opt.key ? '#fff' : theme.colors.skyDeep}
+                  />
+                </View>
+                <View style={styles.visText}>
+                  <Text style={[styles.visLabel, visibility === opt.key && styles.visLabelSelected]}>
+                    {opt.label}
+                  </Text>
+                  <Text style={styles.visDesc}>{opt.desc}</Text>
+                </View>
+                {visibility === opt.key && (
+                  <Ionicons name="checkmark-circle" size={20} color={theme.colors.skyDeep} />
+                )}
+              </GlassCard>
+            </TouchableOpacity>
+          ))}
+
+          <GlassCard style={styles.locationRow}>
+            <Ionicons
+              name={locating ? 'locate-outline' : 'location'}
+              size={16}
+              color={locating ? theme.colors.inkMuted : theme.colors.mintDeep}
+            />
+            <Text style={styles.locationText}>
+              {locating ? 'Acquiring location…' : 'Location captured'}
+            </Text>
+            {locating && <ActivityIndicator size="small" color={theme.colors.inkMuted} style={{ marginLeft: 6 }} />}
+          </GlassCard>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <GlassButton
+            label={submitting ? 'Dropping...' : 'Drop Message'}
+            onPress={handleSubmit}
+            variant={canSubmit ? 'primary' : 'ghost'}
+            size="lg"
+          />
+        </View>
+      </KeyboardAvoidingView>
+    </SkyBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: theme.colors.bgDeep },
+  flex: { flex: 1 },
   container: { padding: theme.spacing.xl, paddingBottom: 16 },
   sectionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: theme.colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: theme.spacing.sm,
     marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
   },
-  inputWrapper: {
-    backgroundColor: theme.colors.bgSurface,
-    borderRadius: theme.radii.md,
-    borderWidth: 1,
-    borderColor: theme.colors.borderDefault,
+  inputCard: {
     padding: theme.spacing.md,
     minHeight: 120,
   },
   input: {
     fontSize: 16,
-    color: theme.colors.textPrimary,
+    color: theme.colors.ink,
     lineHeight: 24,
     flex: 1,
     textAlignVertical: 'top',
@@ -211,84 +208,67 @@ const styles = StyleSheet.create({
   charCount: {
     alignSelf: 'flex-end',
     fontSize: 12,
-    color: theme.colors.textMuted,
+    color: theme.colors.inkMuted,
     marginTop: theme.spacing.sm,
   },
   charCountWarning: {
-    color: theme.colors.warning,
+    color: theme.colors.warn,
     fontWeight: '700',
   },
+  visTouch: { marginBottom: theme.spacing.sm },
   visOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.bgSurface,
-    borderRadius: theme.radii.md,
-    borderWidth: 1.5,
-    borderColor: theme.colors.borderDefault,
     padding: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
   },
   visOptionSelected: {
-    borderColor: theme.colors.brand,
-    backgroundColor: theme.colors.brandMuted,
+    borderWidth: 2,
+    borderColor: theme.colors.skyDeep,
   },
   visIconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.colors.bgElevated,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: theme.colors.glassTint,
+    borderWidth: 1,
+    borderColor: theme.colors.glassBorder,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: theme.spacing.md,
   },
   visIconBgSelected: {
-    backgroundColor: theme.colors.brand,
+    backgroundColor: theme.colors.skyDeep,
+    borderColor: theme.colors.skyDeep,
   },
   visText: { flex: 1 },
   visLabel: {
     fontSize: 15,
     fontWeight: '700',
-    color: theme.colors.textPrimary,
+    color: theme.colors.ink,
   },
   visLabelSelected: {
-    color: theme.colors.brand,
+    color: theme.colors.skyDeep,
   },
   visDesc: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: theme.colors.inkMuted,
     marginTop: 2,
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: theme.spacing.xl,
-    gap: 6,
+    padding: theme.spacing.md,
+    gap: 8,
   },
   locationText: {
     fontSize: 13,
-    color: theme.colors.textSecondary,
+    color: theme.colors.inkMuted,
+    flex: 1,
   },
   footer: {
     padding: theme.spacing.xl,
     borderTopWidth: 1,
-    borderColor: theme.colors.borderSubtle,
-    backgroundColor: theme.colors.bgDeep,
-  },
-  submitBtn: {
-    backgroundColor: theme.colors.brand,
-    borderRadius: theme.radii.pill,
-    height: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...theme.shadows.buttonPress,
-  },
-  submitBtnDisabled: {
-    backgroundColor: theme.colors.disabled,
-  },
-  submitLabel: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#fff',
+    borderTopColor: theme.colors.glassBorder,
   },
 });

@@ -9,12 +9,18 @@ import {
 import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { CATEGORY_ICONS } from '../constants/icons';
-import { Card, Button, Header } from '../components/ui';
 import BubbleAreaOverlay from '../components/BubbleAreaOverlay';
 import mapDarkStyle from '../components/MapDarkStyle.json';
 import { createBubble } from '../api/bubbles';
 import { theme } from '../theme';
 import { fadeInUp, fadeInUpStyle } from '../utils/animations';
+import SkyBackground from '../components/visual/SkyBackground';
+import BubbleField from '../components/visual/BubbleField';
+import GlassCard from '../components/visual/GlassCard';
+import GlassButton from '../components/visual/GlassButton';
+import GlassChip from '../components/visual/GlassChip';
+import ScreenHeader from '../components/visual/ScreenHeader';
+import SectionLabel from '../components/visual/SectionLabel';
 
 const VISIBILITY_LABELS = {
   public: 'Public',
@@ -73,124 +79,120 @@ export default function CreatePreviewScreen({ navigation, route }) {
   const iconName = CATEGORY_ICONS[category] || CATEGORY_ICONS.Other;
 
   return (
-    <Animated.View style={[styles.flex, fadeInUpStyle(enterAnim)]}>
-      <Header
-        title="Preview"
-        subtitle="Step 5 of 5"
-        onBack={() => navigation.goBack()}
-      />
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.hint}>Review your bubble before publishing.</Text>
-
-        <Card style={styles.summaryCard}>
-          <View style={styles.categoryRow}>
-            <View style={styles.categoryIcon}>
-              <Ionicons name={iconName} size={28} color={theme.colors.brand} />
-            </View>
-            <View style={styles.categoryInfo}>
-              <Text style={styles.categoryLabel}>{category}</Text>
-              <Text style={styles.bubbleTitle}>{title}</Text>
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          {description ? (
-            <>
-              <DetailRow label="Description" value={description} />
-              <View style={styles.rowDivider} />
-            </>
-          ) : null}
-
-          <DetailRow
-            label="Duration"
-            value={durationH === 1 ? '1 hour' : `${durationH} hours`}
-          />
-          <View style={styles.rowDivider} />
-
-          <DetailRow
-            label="Visibility"
-            value={VISIBILITY_LABELS[visibility] || visibility}
-          />
-          <View style={styles.rowDivider} />
-
-          <DetailRow
-            label="Location"
-            value={location ? 'Near your location' : 'Location unavailable'}
-          />
-          <View style={styles.rowDivider} />
-
-          <DetailRow
-            label="Area"
-            value={
-              shape_type === 'polygon'
-                ? 'Custom polygon'
-                : shape_type === 'rectangle'
-                ? 'Custom rectangle'
-                : `Circle, ~${radius_m || 200}m radius`
-            }
-          />
-
-          {/* Mini-map preview */}
-          {(center || location) && (
-            <View style={styles.miniMapContainer}>
-              <MapView
-                provider={PROVIDER_GOOGLE}
-                style={styles.miniMap}
-                customMapStyle={mapDarkStyle}
-                scrollEnabled={false}
-                zoomEnabled={false}
-                rotateEnabled={false}
-                pitchEnabled={false}
-                initialRegion={{
-                  latitude: center?.lat || location?.lat || 32.08,
-                  longitude: center?.lng || location?.lng || 34.78,
-                  latitudeDelta: 0.008,
-                  longitudeDelta: 0.008,
-                }}
-              >
-                <BubbleAreaOverlay
-                  bubble={{
-                    lat: center?.lat || location?.lat || 32.08,
-                    lng: center?.lng || location?.lng || 34.78,
-                    shape_type: shape_type || 'circle',
-                    radius_m: radius_m || 200,
-                    shape_coords: shape_coords || null,
-                  }}
-                  selected
-                />
-              </MapView>
-            </View>
-          )}
-        </Card>
-
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-        <Button
-          title="Create Bubble"
-          onPress={handleCreate}
-          loading={saving}
-          disabled={saving}
-          size="lg"
-          style={styles.createBtn}
+    <SkyBackground variant="dawn">
+      <BubbleField />
+      <Animated.View style={[styles.flex, fadeInUpStyle(enterAnim)]}>
+        <ScreenHeader
+          title="Ready to float"
+          onBack={() => navigation.goBack()}
+          right={<GlassChip label="5 / 5" />}
         />
-      </ScrollView>
-    </Animated.View>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+        >
+          <GlassCard style={styles.summaryCard}>
+            <View style={styles.categoryRow}>
+              <View style={styles.categoryIconWrap}>
+                <Ionicons name={iconName} size={28} color={theme.colors.skyDeep} />
+              </View>
+              <View style={styles.categoryInfo}>
+                <Text style={styles.categoryLabel}>{category}</Text>
+                <Text style={styles.bubbleTitle}>{title}</Text>
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            {description ? (
+              <>
+                <DetailRow label="Description" value={description} />
+                <View style={styles.rowDivider} />
+              </>
+            ) : null}
+
+            <DetailRow
+              label="Duration"
+              value={durationH === 1 ? '1 hour' : `${durationH} hours`}
+            />
+            <View style={styles.rowDivider} />
+
+            <DetailRow
+              label="Visibility"
+              value={VISIBILITY_LABELS[visibility] || visibility}
+            />
+            <View style={styles.rowDivider} />
+
+            <DetailRow
+              label="Location"
+              value={location ? 'Near your location' : 'Location unavailable'}
+            />
+            <View style={styles.rowDivider} />
+
+            <DetailRow
+              label="Area"
+              value={
+                shape_type === 'polygon'
+                  ? 'Custom polygon'
+                  : shape_type === 'rectangle'
+                  ? 'Custom rectangle'
+                  : `Circle, ~${radius_m || 200}m radius`
+              }
+            />
+
+            {/* Mini-map preview */}
+            {(center || location) && (
+              <View style={styles.miniMapContainer}>
+                <MapView
+                  provider={PROVIDER_GOOGLE}
+                  style={styles.miniMap}
+                  customMapStyle={mapDarkStyle}
+                  scrollEnabled={false}
+                  zoomEnabled={false}
+                  rotateEnabled={false}
+                  pitchEnabled={false}
+                  initialRegion={{
+                    latitude: center?.lat || location?.lat || 32.08,
+                    longitude: center?.lng || location?.lng || 34.78,
+                    latitudeDelta: 0.008,
+                    longitudeDelta: 0.008,
+                  }}
+                >
+                  <BubbleAreaOverlay
+                    bubble={{
+                      lat: center?.lat || location?.lat || 32.08,
+                      lng: center?.lng || location?.lng || 34.78,
+                      shape_type: shape_type || 'circle',
+                      radius_m: radius_m || 200,
+                      shape_coords: shape_coords || null,
+                    }}
+                    selected
+                  />
+                </MapView>
+              </View>
+            )}
+          </GlassCard>
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          <GlassButton
+            label={saving ? 'Creating...' : 'Float bubble'}
+            onPress={handleCreate}
+            variant="primary"
+            size="lg"
+            style={styles.createBtn}
+          />
+        </ScrollView>
+      </Animated.View>
+    </SkyBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: theme.colors.bgDeep },
-  container: { padding: theme.spacing.xl, paddingBottom: 48 },
-  hint: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.xl,
-  },
+  flex: { flex: 1 },
+  container: { padding: theme.spacing.xl, paddingBottom: 100 },
   summaryCard: {
+    padding: theme.spacing.lg,
     marginBottom: theme.spacing.xl,
   },
   categoryRow: {
@@ -199,38 +201,38 @@ const styles = StyleSheet.create({
     gap: 14,
     marginBottom: theme.spacing.lg,
   },
-  categoryIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: theme.radii.sm,
-    backgroundColor: theme.colors.brandMuted,
+  categoryIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.glassTint,
+    borderWidth: 1.5,
+    borderColor: theme.colors.glassBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  categoryInfo: {
-    flex: 1,
-  },
+  categoryInfo: { flex: 1 },
   categoryLabel: {
     fontSize: 12,
-    color: theme.colors.brand,
-    fontWeight: '600',
+    color: theme.colors.skyDeep,
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
     marginBottom: 4,
   },
   bubbleTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
+    fontWeight: '800',
+    color: theme.colors.ink,
   },
   divider: {
     height: 1,
-    backgroundColor: theme.colors.borderDefault,
+    backgroundColor: theme.colors.glassBorder,
     marginBottom: theme.spacing.md,
   },
   rowDivider: {
     height: 1,
-    backgroundColor: theme.colors.borderDefault,
+    backgroundColor: theme.colors.glassBorder,
     marginVertical: theme.spacing.sm,
   },
   detailRow: {
@@ -242,15 +244,16 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 13,
-    color: theme.colors.textMuted,
+    color: theme.colors.inkMuted,
     fontWeight: '600',
     minWidth: 90,
   },
   detailValue: {
     flex: 1,
     fontSize: 13,
-    color: theme.colors.textBody,
+    color: theme.colors.inkSoft,
     textAlign: 'right',
+    fontWeight: '600',
   },
   errorText: {
     color: theme.colors.error,
@@ -263,11 +266,8 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.md,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: theme.colors.borderDefault,
+    borderColor: theme.colors.glassBorder,
   },
-  miniMap: {
-    height: 140,
-    width: '100%',
-  },
+  miniMap: { height: 140, width: '100%' },
   createBtn: { marginTop: 8 },
 });

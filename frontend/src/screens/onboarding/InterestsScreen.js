@@ -2,8 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CATEGORY_ICONS } from '../../constants/icons';
-import { Chip, Button } from '../../components/ui';
 import { theme } from '../../theme';
+import SkyBackground from '../../components/visual/SkyBackground';
+import BubbleField from '../../components/visual/BubbleField';
+import GlassButton from '../../components/visual/GlassButton';
+import GlassChip from '../../components/visual/GlassChip';
+import ScreenHeader from '../../components/visual/ScreenHeader';
+import SectionLabel from '../../components/visual/SectionLabel';
 
 const INTEREST_OPTIONS = [
   'Social', 'Study', 'Food & Drinks', 'Sports', 'Music',
@@ -44,97 +49,110 @@ export default function InterestsScreen({ route, navigation }) {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Text style={styles.step}>Step 4 of 7</Text>
-      <Text style={styles.title}>What are you into?</Text>
-      <Text style={styles.subtitle}>Pick your interests so we can show you relevant bubbles.</Text>
+    <SkyBackground variant="mint">
+      <BubbleField />
+      <View style={styles.screenWrap}>
+        <ScreenHeader
+          title="Pick your vibes"
+          subtitle="Step 4 of 7"
+          onBack={() => {}}
+          right={<GlassChip label="4 / 7" />}
+        />
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.title}>What floats{'\n'}your bubble?</Text>
+          <Text style={styles.subtitle}>Pick 3–8. We'll match you into bubbles with the same energy.</Text>
 
-      <View style={styles.chipGrid}>
-        {INTEREST_OPTIONS.map((tag) => {
-          const iconName = CATEGORY_ICONS[tag] || CATEGORY_ICONS.Other;
-          return (
-            <Chip
-              key={tag}
-              label={tag}
-              selected={interests.includes(tag)}
-              onPress={() => toggleInterest(tag)}
-              icon={<Ionicons name={iconName} size={16} color={interests.includes(tag) ? theme.colors.brand : theme.colors.textMuted} />}
-              style={styles.chip}
-            />
-          );
-        })}
-      </View>
+          <View style={styles.chipGrid}>
+            {INTEREST_OPTIONS.map((tag) => {
+              const iconName = CATEGORY_ICONS[tag] || CATEGORY_ICONS.Other;
+              return (
+                <GlassChip
+                  key={tag}
+                  label={tag}
+                  selected={interests.includes(tag)}
+                  onPress={() => toggleInterest(tag)}
+                />
+              );
+            })}
+          </View>
 
-      <Text style={styles.sectionLabel}>Vibes</Text>
-      <Text style={styles.sectionHint}>How would you describe your energy?</Text>
-      <View style={styles.chipGrid}>
-        {VIBE_OPTIONS.map((vibe) => (
-          <Chip
-            key={vibe}
-            label={vibe}
-            selected={vibes.includes(vibe)}
-            onPress={() => toggleVibe(vibe)}
-            style={styles.chip}
-          />
-        ))}
-      </View>
+          <SectionLabel style={{ marginTop: 28 }}>Vibes</SectionLabel>
+          <Text style={styles.sectionHint}>How would you describe your energy?</Text>
+          <View style={styles.chipGrid}>
+            {VIBE_OPTIONS.map((vibe) => (
+              <GlassChip
+                key={vibe}
+                label={vibe}
+                selected={vibes.includes(vibe)}
+                onPress={() => toggleVibe(vibe)}
+              />
+            ))}
+          </View>
 
-      <Text style={styles.sectionLabel}>What are you looking for?</Text>
-      <View style={styles.chipGrid}>
-        {INTENT_OPTIONS.map((opt) => (
-          <Chip
-            key={opt}
-            label={opt}
-            selected={intent === opt}
-            onPress={() => setIntent(intent === opt ? '' : opt)}
-            style={styles.chip}
-          />
-        ))}
-      </View>
+          <SectionLabel style={{ marginTop: 24 }}>What are you looking for?</SectionLabel>
+          <View style={styles.chipGrid}>
+            {INTENT_OPTIONS.map((opt) => (
+              <GlassChip
+                key={opt}
+                label={opt}
+                selected={intent === opt}
+                onPress={() => setIntent(intent === opt ? '' : opt)}
+              />
+            ))}
+          </View>
 
-      <View style={styles.footer}>
-        <Button title="Continue" onPress={handleNext} size="lg" />
-        <TouchableOpacity style={styles.skipBtn} onPress={handleNext}>
-          <Text style={styles.skipText}>Skip for now</Text>
-        </TouchableOpacity>
-        <View style={styles.progress}>
-          {[0,1,2,3,4,5,6].map((i) => (
-            <View key={i} style={[styles.dot, i === 4 && styles.dotActive]} />
-          ))}
-        </View>
+          <View style={styles.footer}>
+            <View style={styles.btnRow}>
+              <GlassButton label="Back" variant="ghost" size="lg" onPress={() => {}} style={styles.btnBack} />
+              <GlassButton
+                label={`Continue · ${interests.length} picked`}
+                variant="primary"
+                size="lg"
+                onPress={handleNext}
+                style={styles.btnNext}
+              />
+            </View>
+            <TouchableOpacity style={styles.skipBtn} onPress={handleNext} accessibilityRole="button">
+              <Text style={styles.skipText}>Skip for now</Text>
+            </TouchableOpacity>
+            <View style={styles.progress}>
+              {[0,1,2,3,4,5,6].map((i) => (
+                <View key={i} style={[styles.dot, i === 4 && styles.dotActive]} />
+              ))}
+            </View>
+          </View>
+        </ScrollView>
       </View>
-    </ScrollView>
+    </SkyBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.bgDeep },
-  content: {
-    padding: 24,
-    paddingTop: Platform.OS === 'ios' ? 64 : 32,
-    paddingBottom: 48,
-  },
-  step: { fontSize: 13, color: theme.colors.brand, fontWeight: '600', marginBottom: 8 },
-  title: { ...theme.typography.titleMd, color: theme.colors.textPrimary, marginBottom: 8 },
-  subtitle: { fontSize: 15, color: theme.colors.textSecondary, marginBottom: 24 },
-  sectionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.textPrimary,
-    marginTop: 28,
+  screenWrap: { flex: 1, zIndex: 2 },
+  scroll: { flex: 1 },
+  content: { padding: 24, paddingTop: 8, paddingBottom: 100 },
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.8,
+    color: theme.colors.ink,
     marginBottom: 6,
+    lineHeight: 32,
   },
-  sectionHint: { fontSize: 13, color: theme.colors.textMuted, marginBottom: 12 },
+  subtitle: { fontSize: 14, color: theme.colors.inkSoft, marginBottom: 22 },
+  sectionHint: { fontSize: 13, color: theme.colors.inkMuted, marginBottom: 12 },
   chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { marginBottom: 4 },
-  footer: { paddingBottom: 32, marginTop: 32 },
+  footer: { marginTop: 40 },
+  btnRow: { flexDirection: 'row', gap: 10 },
+  btnBack: { flex: 1 },
+  btnNext: { flex: 2 },
   skipBtn: { alignItems: 'center', paddingVertical: 14 },
-  skipText: { fontSize: 15, color: theme.colors.textMuted },
+  skipText: { fontSize: 15, color: theme.colors.inkMuted },
   progress: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 8 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.bgElevated },
-  dotActive: { backgroundColor: theme.colors.brand, width: 24 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.inkGhost },
+  dotActive: { backgroundColor: theme.colors.skyDeep, width: 24 },
 });

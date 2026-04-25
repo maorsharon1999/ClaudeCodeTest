@@ -10,6 +10,8 @@ import { getProfile, updateProfile } from '../api/profile';
 import { ProfileForm } from './ProfileSetupScreen';
 import { Header } from '../components/ui';
 import { theme } from '../theme';
+import SkyBackground from '../components/visual/SkyBackground';
+import BubbleField from '../components/visual/BubbleField';
 
 export default function ProfileEditScreen({ navigation }) {
   const [profile, setProfile] = useState(null);
@@ -65,24 +67,27 @@ export default function ProfileEditScreen({ navigation }) {
   }
 
   return (
-    <Animated.View style={[styles.flex, enterStyle]}>
-      <Header title="Edit Profile" onBack={() => navigation.goBack()} />
-      {saveError ? (
-        <Text style={styles.saveError}>{saveError}</Text>
-      ) : null}
-      <ProfileForm
-        initialValues={profile}
-        onSave={handleSave}
-        saving={saving}
-        photos={profile.photos || []}
-        onPhotosChange={(p) => setProfile((prev) => ({ ...prev, photos: p }))}
-      />
-    </Animated.View>
+    <SkyBackground variant="sky">
+      <BubbleField seed={28} />
+      <Animated.View style={[styles.flex, enterStyle]}>
+        <Header title="Edit Profile" onBack={() => navigation.goBack()} />
+        {saveError ? (
+          <Text style={styles.saveError}>{saveError}</Text>
+        ) : null}
+        <ProfileForm
+          initialValues={profile}
+          onSave={handleSave}
+          saving={saving}
+          photos={profile.photos || []}
+          onPhotosChange={(p) => setProfile((prev) => ({ ...prev, photos: p }))}
+        />
+      </Animated.View>
+    </SkyBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: theme.colors.bgDeep },
+  flex: { flex: 1 },
   center: {
     flex: 1,
     justifyContent: 'center',

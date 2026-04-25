@@ -15,6 +15,12 @@ import { verifyFirebaseIdToken } from '../api/auth';
 import { signInOrRegisterWithEmail } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../theme';
+import SkyBackground from '../components/visual/SkyBackground';
+import BubbleField from '../components/visual/BubbleField';
+import LogoBubble from '../components/visual/LogoBubble';
+import GlassButton from '../components/visual/GlassButton';
+import GlassCard from '../components/visual/GlassCard';
+import GlassInput from '../components/visual/GlassInput';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -115,198 +121,180 @@ export default function EmailLoginScreen() {
   const isSubmitting = status === 'submitting';
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <Animated.View style={[styles.container, enterStyle]}>
-        <View style={styles.decorCircle} />
+    <SkyBackground variant="sky">
+      <BubbleField />
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <Animated.View style={[styles.container, enterStyle]}>
+          {/* Logo floating above card */}
+          <View style={styles.logoWrap}>
+            <LogoBubble size={130} />
+          </View>
 
-        <Text style={styles.title}>Bubble</Text>
-        <View style={[styles.accentBar, { backgroundColor: theme.colors.brand }]} />
-        <Text style={styles.subtitle}>
-          {isRegistering ? 'Create your account' : 'Welcome back'}
-        </Text>
-
-        <TextInput
-          style={[styles.input, status === 'error' && styles.inputError]}
-          placeholder="Email"
-          placeholderTextColor={theme.colors.textFaint}
-          keyboardType="email-address"
-          autoCorrect={false}
-          autoCapitalize="none"
-          autoComplete="email"
-          textContentType="emailAddress"
-          value={email}
-          onChangeText={(t) => { setEmail(t); clearError(); }}
-          editable={!isSubmitting}
-        />
-
-        <View style={styles.passwordRow}>
-          <TextInput
-            style={[styles.input, styles.passwordInput, status === 'error' && styles.inputError]}
-            placeholder="Password"
-            placeholderTextColor={theme.colors.textFaint}
-            secureTextEntry={!showPassword}
-            autoComplete={isRegistering ? 'new-password' : 'current-password'}
-            textContentType={isRegistering ? 'newPassword' : 'password'}
-            value={password}
-            onChangeText={(t) => { setPassword(t); clearError(); }}
-            editable={!isSubmitting}
-          />
-          <TouchableOpacity
-            style={styles.eyeBtn}
-            onPress={() => setShowPassword((v) => !v)}
-            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-          >
-            <Ionicons
-              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-              size={20}
-              color={theme.colors.textMuted}
-            />
-          </TouchableOpacity>
-        </View>
-
-        {status === 'error' && (
-          <Text style={styles.errorText}>{errorMsg}</Text>
-        )}
-
-        <Animated.View style={{ transform: [{ scale: btnScale }] }}>
-          <TouchableOpacity
-            style={[styles.button, isSubmitting && styles.buttonDisabled]}
-            onPress={handleSubmit}
-            onPressIn={onBtnPressIn}
-            onPressOut={onBtnPressOut}
-            disabled={isSubmitting}
-            accessibilityRole="button"
-            accessibilityLabel={isRegistering ? 'Create account' : 'Sign in'}
-          >
-            {!isSubmitting && (
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.gradients.brand?.[0] ?? '#6C47FF' }]} />
-            )}
-            {isSubmitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>
-                {isRegistering ? 'Create Account' : 'Sign In'}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </Animated.View>
-
-        <TouchableOpacity
-          style={styles.toggleRow}
-          onPress={() => { setIsRegistering((v) => !v); setStatus('idle'); setErrorMsg(''); }}
-          accessibilityRole="button"
-        >
-          <Text style={styles.toggleText}>
-            {isRegistering
-              ? 'Already have an account? '
-              : "Don't have an account? "}
-            <Text style={styles.toggleLink}>
-              {isRegistering ? 'Sign in' : 'Sign up'}
+          {/* Glass card */}
+          <GlassCard style={styles.card}>
+            <Text style={styles.cardTitle}>
+              {isRegistering ? 'Create your account' : 'Welcome back'}
             </Text>
-          </Text>
-        </TouchableOpacity>
-      </Animated.View>
-    </KeyboardAvoidingView>
+
+            <GlassInput
+              placeholder="Email Address"
+              value={email}
+              onChangeText={(t) => { setEmail(t); clearError(); }}
+              error={status === 'error' ? errorMsg : undefined}
+              keyboardType="email-address"
+              autoCorrect={false}
+              autoCapitalize="none"
+              autoComplete="email"
+              textContentType="emailAddress"
+              editable={!isSubmitting}
+            />
+
+            <View style={styles.passwordRow}>
+              <GlassInput
+                placeholder="Password"
+                value={password}
+                onChangeText={(t) => { setPassword(t); clearError(); }}
+                secureTextEntry={!showPassword}
+                autoComplete={isRegistering ? 'new-password' : 'current-password'}
+                textContentType={isRegistering ? 'newPassword' : 'password'}
+                editable={!isSubmitting}
+              />
+              <TouchableOpacity
+                style={styles.eyeBtn}
+                onPress={() => setShowPassword((v) => !v)}
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color={theme.colors.inkMuted}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {status === 'error' && (
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            )}
+
+            <Animated.View style={{ transform: [{ scale: btnScale }] }}>
+              <GlassButton
+                label={isRegistering ? 'Create Account' : 'Sign In'}
+                variant="primary"
+                size="lg"
+                onPress={handleSubmit}
+                onPressIn={onBtnPressIn}
+                onPressOut={onBtnPressOut}
+                disabled={isSubmitting}
+                loading={isSubmitting}
+                style={styles.submitBtn}
+              />
+            </Animated.View>
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerLabel}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.toggleRow}
+              onPress={() => { setIsRegistering((v) => !v); setStatus('idle'); setErrorMsg(''); }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.toggleText}>
+                {isRegistering
+                  ? 'Already have an account? '
+                  : "New to the surface? "}
+                <Text style={styles.toggleLink}>
+                  {isRegistering ? 'Sign in' : 'Create Account'}
+                </Text>
+              </Text>
+            </TouchableOpacity>
+          </GlassCard>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </SkyBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: theme.colors.bgDeep },
+  flex: { flex: 1 },
   container: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
+    paddingTop: 70,
+    zIndex: 2,
   },
-  decorCircle: {
-    position: 'absolute',
-    top: -80,
-    right: -60,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(0,114,206,0.08)',
+  logoWrap: {
+    alignItems: 'center',
+    marginBottom: -60,
+    zIndex: 3,
   },
-  title: {
-    ...theme.typography.displayLg,
-    color: theme.colors.brand,
+  card: {
+    paddingTop: 80,
+    paddingHorizontal: 22,
+    paddingBottom: 28,
+  },
+  cardTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: theme.colors.ink,
     textAlign: 'center',
-    marginBottom: 8,
-  },
-  accentBar: {
-    height: 3,
-    width: 48,
-    borderRadius: 2,
     marginBottom: 20,
-    alignSelf: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 36,
-  },
-  input: {
-    height: 52,
-    borderWidth: 1.5,
-    borderColor: theme.colors.borderDefault,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: theme.colors.textPrimary,
-    backgroundColor: theme.colors.inputBg,
-    marginBottom: 12,
-  },
-  inputError: {
-    borderColor: theme.colors.error,
   },
   passwordRow: {
     position: 'relative',
-  },
-  passwordInput: {
-    paddingRight: 48,
+    marginTop: 12,
   },
   eyeBtn: {
     position: 'absolute',
     right: 14,
     top: 14,
     padding: 2,
+    zIndex: 1,
   },
-
   errorText: {
     color: theme.colors.error,
     fontSize: 13,
-    marginBottom: 12,
+    marginTop: 6,
+    marginBottom: 4,
   },
-  button: {
-    height: 52,
-    backgroundColor: theme.colors.brand,
-    borderRadius: theme.radii.md,
-    justifyContent: 'center',
+  submitBtn: {
+    marginTop: 20,
+    width: '100%',
+    letterSpacing: 3,
+  },
+  dividerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
-    overflow: 'hidden',
+    gap: 12,
+    marginVertical: 22,
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.inkGhost,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
+  dividerLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 2.5,
+    color: theme.colors.inkMuted,
   },
   toggleRow: {
-    marginTop: 24,
     alignItems: 'center',
   },
   toggleText: {
     fontSize: 14,
-    color: theme.colors.textSecondary,
+    color: theme.colors.inkSoft,
   },
   toggleLink: {
-    color: theme.colors.brand,
-    fontWeight: '600',
+    color: theme.colors.ink,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
 });

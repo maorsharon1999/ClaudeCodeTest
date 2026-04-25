@@ -5,6 +5,7 @@ import { CATEGORY_ICONS } from '../constants/icons';
 import { timeRemaining } from '../utils/timeFormatters';
 import { formatDistance } from '../utils/timeFormatters';
 import { theme } from '../theme';
+import GlassButton from './visual/GlassButton';
 
 export default function BubblePeekCard({ bubble, onJoin, onDetails, joining }) {
   if (!bubble) return null;
@@ -46,27 +47,27 @@ export default function BubblePeekCard({ bubble, onJoin, onDetails, joining }) {
       )}
 
       <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.detailsBtn}
+        <GlassButton
+          variant="ghost"
+          size="md"
           onPress={onDetails}
+          style={styles.detailsBtnFlex}
           accessibilityRole="button"
           accessibilityLabel="View details"
         >
-          <Text style={styles.detailsBtnText}>Details</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.joinBtn}
+          Details
+        </GlassButton>
+        <GlassButton
+          variant="primary"
+          size="md"
           onPress={onJoin}
           disabled={joining}
+          style={styles.joinBtnFlex}
           accessibilityRole="button"
           accessibilityLabel="Join this bubble"
         >
-          {joining ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={styles.joinBtnText}>Join Bubble</Text>
-          )}
-        </TouchableOpacity>
+          {joining ? <ActivityIndicator color="#fff" size="small" /> : 'Join Bubble'}
+        </GlassButton>
       </View>
     </View>
   );
@@ -74,13 +75,14 @@ export default function BubblePeekCard({ bubble, onJoin, onDetails, joining }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: theme.colors.bgElevated,
+    backgroundColor: 'rgba(255,255,255,0.82)',
     borderTopLeftRadius: theme.radii.xl,
     borderTopRightRadius: theme.radii.xl,
     padding: 20,
     paddingTop: 12,
-    borderTopWidth: 1,
-    borderColor: theme.colors.borderDefault,
+    borderTopWidth: 1.5,
+    borderColor: theme.colors.glassBorder,
+    ...theme.shadows.card,
   },
   handle: {
     width: 36,
@@ -149,31 +151,6 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 16,
   },
-  detailsBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: theme.radii.md,
-    borderWidth: 1,
-    borderColor: theme.colors.borderDefault,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  detailsBtnText: {
-    color: theme.colors.textPrimary,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  joinBtn: {
-    flex: 2,
-    height: 48,
-    backgroundColor: theme.colors.brand,
-    borderRadius: theme.radii.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  joinBtnText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
+  detailsBtnFlex: { flex: 1 },
+  joinBtnFlex: { flex: 2 },
 });

@@ -8,9 +8,14 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Header } from '../components/ui';
 import { theme } from '../theme';
 import { fadeInUp, fadeInUpStyle } from '../utils/animations';
+import SkyBackground from '../components/visual/SkyBackground';
+import BubbleField from '../components/visual/BubbleField';
+import GlassCard from '../components/visual/GlassCard';
+import GlassButton from '../components/visual/GlassButton';
+import GlassChip from '../components/visual/GlassChip';
+import ScreenHeader from '../components/visual/ScreenHeader';
 
 const VISIBILITY_OPTIONS = [
   {
@@ -48,71 +53,83 @@ export default function CreateVisibilityScreen({ navigation, route }) {
   }
 
   return (
-    <Animated.View style={[styles.flex, fadeInUpStyle(enterAnim)]}>
-      <Header
-        title="Visibility"
-        subtitle="Step 4 of 5"
-        onBack={() => navigation.goBack()}
-      />
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.subtitle}>Who can see and join your bubble?</Text>
-
-        <View style={styles.optionList}>
-          {VISIBILITY_OPTIONS.map((opt) => {
-            const isSelected = visibility === opt.key;
-            return (
-              <TouchableOpacity
-                key={opt.key}
-                style={[styles.card, isSelected && styles.cardSelected]}
-                onPress={() => setVisibility(opt.key)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: isSelected }}
-              >
-                <View style={[styles.iconBox, isSelected && styles.iconBoxSelected]}>
-                  <Ionicons
-                    name={opt.icon}
-                    size={24}
-                    color={isSelected ? theme.colors.brand : theme.colors.textSecondary}
-                  />
-                </View>
-                <View style={styles.cardText}>
-                  <Text style={[styles.cardTitle, isSelected && styles.cardTitleSelected]}>
-                    {opt.title}
-                  </Text>
-                  <Text style={styles.cardDesc}>{opt.desc}</Text>
-                </View>
-                {isSelected && (
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={20}
-                    color={theme.colors.brand}
-                  />
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        <Button
-          title="Next"
-          onPress={handleNext}
-          size="lg"
-          style={styles.nextBtn}
+    <SkyBackground variant="sky">
+      <BubbleField />
+      <Animated.View style={[styles.flex, fadeInUpStyle(enterAnim)]}>
+        <ScreenHeader
+          title="Who can see"
+          onBack={() => navigation.goBack()}
+          right={<GlassChip label="4 / 5" />}
         />
-      </ScrollView>
-    </Animated.View>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.heading}>Set the surface.</Text>
+          <Text style={styles.subtitle}>Who can see and join your bubble?</Text>
+
+          <View style={styles.optionList}>
+            {VISIBILITY_OPTIONS.map((opt) => {
+              const isSelected = visibility === opt.key;
+              return (
+                <TouchableOpacity
+                  key={opt.key}
+                  onPress={() => setVisibility(opt.key)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: isSelected }}
+                >
+                  <GlassCard style={[styles.card, isSelected && styles.cardSelected]}>
+                    <View style={[styles.iconBox, isSelected && styles.iconBoxSelected]}>
+                      <Ionicons
+                        name={opt.icon}
+                        size={24}
+                        color={isSelected ? theme.colors.skyDeep : theme.colors.inkMuted}
+                      />
+                    </View>
+                    <View style={styles.cardText}>
+                      <Text style={[styles.cardTitle, isSelected && styles.cardTitleSelected]}>
+                        {opt.title}
+                      </Text>
+                      <Text style={styles.cardDesc}>{opt.desc}</Text>
+                    </View>
+                    {isSelected && (
+                      <View style={styles.radioFill}>
+                        <View style={styles.radioInner} />
+                      </View>
+                    )}
+                    {!isSelected && <View style={styles.radioEmpty} />}
+                  </GlassCard>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <GlassButton
+            label="Next"
+            onPress={handleNext}
+            variant="primary"
+            size="lg"
+            style={styles.nextBtn}
+          />
+        </ScrollView>
+      </Animated.View>
+    </SkyBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: theme.colors.bgDeep },
-  container: { padding: theme.spacing.xl, paddingBottom: 48 },
+  flex: { flex: 1 },
+  container: { padding: theme.spacing.xl, paddingBottom: 100 },
+  heading: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: theme.colors.ink,
+    letterSpacing: -0.6,
+    marginBottom: 4,
+  },
   subtitle: {
-    fontSize: 15,
-    color: theme.colors.textSecondary,
+    fontSize: 14,
+    color: theme.colors.inkMuted,
     marginBottom: theme.spacing.xl,
   },
   optionList: {
@@ -121,44 +138,65 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.bgSurface,
-    borderRadius: theme.radii.md,
-    borderWidth: 1,
-    borderColor: theme.colors.borderDefault,
     padding: 16,
     gap: 14,
   },
   cardSelected: {
-    borderColor: theme.colors.brand,
-    backgroundColor: theme.colors.brandMuted,
+    borderWidth: 2,
+    borderColor: theme.colors.skyDeep,
   },
   iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: theme.radii.sm,
-    backgroundColor: theme.colors.bgElevated,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.glassTint,
+    borderWidth: 1.5,
+    borderColor: theme.colors.glassBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconBoxSelected: {
-    backgroundColor: 'rgba(0,114,206,0.15)',
+    backgroundColor: 'rgba(93,144,191,0.15)',
+    borderColor: theme.colors.skyDeep,
   },
   cardText: {
     flex: 1,
   },
   cardTitle: {
     fontSize: 15,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
+    fontWeight: '800',
+    color: theme.colors.ink,
     marginBottom: 4,
   },
   cardTitleSelected: {
-    color: theme.colors.brand,
+    color: theme.colors.skyDeep,
   },
   cardDesc: {
-    fontSize: 13,
-    color: theme.colors.textSecondary,
-    lineHeight: 18,
+    fontSize: 12,
+    color: theme.colors.inkMuted,
+    lineHeight: 17,
+  },
+  radioEmpty: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: theme.colors.inkGhost,
+  },
+  radioFill: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: theme.colors.skyDeep,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: theme.colors.skyDeep,
   },
   nextBtn: { marginTop: 32 },
 });

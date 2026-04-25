@@ -135,7 +135,7 @@ export const theme = {
     surfaceGlass:  ['rgba(255,255,255,0.60)', 'rgba(255,255,255,0.34)'],
     cyanToMint:    ['#9FC4E8', '#9FD4C2'],
     radarPulse:    ['rgba(93,144,191,0.15)', 'rgba(93,144,191,0)'],
-    purpleToCoralH:['#9FC4E8', '#B8B5D6'],
+    skyToLilac:    ['#9FC4E8', '#B8B5D6'],
   },
 
   typography: {

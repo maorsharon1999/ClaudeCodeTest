@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { View, Image, Text, StyleSheet, Platform } from 'react-native';
-
-const BRAND_BLUE = '#0072CE';
-const SELF_TEAL = '#00C9A7';
+import { theme } from '../theme';
 
 export default function UserPhotoMarker({ photoUrl, name, isCurrentUser = false, size = 48 }) {
   const [imageLoaded, setImageLoaded] = useState(false);
 
-  const ringColor = isCurrentUser ? SELF_TEAL : BRAND_BLUE;
+  const ringColor = isCurrentUser ? theme.colors.mintDeep : theme.colors.skyDeep;
   const ringWidth = 4;
   const whiteBorder = 2;
   const outerSize = size + (ringWidth + whiteBorder) * 2;
@@ -82,7 +80,7 @@ const styles = StyleSheet.create({
   },
   shadowBlue: Platform.select({
     ios: {
-      shadowColor: BRAND_BLUE,
+      shadowColor: theme.colors.skyDeep,
       shadowOffset: { width: 0, height: 3 },
       shadowOpacity: 0.4,
       shadowRadius: 6,
@@ -91,7 +89,7 @@ const styles = StyleSheet.create({
   }),
   shadowTeal: Platform.select({
     ios: {
-      shadowColor: SELF_TEAL,
+      shadowColor: theme.colors.mintDeep,
       shadowOffset: { width: 0, height: 3 },
       shadowOpacity: 0.4,
       shadowRadius: 6,

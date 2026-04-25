@@ -14,6 +14,15 @@ import { getProfile, updateProfile } from '../api/profile';
 import { useAuth } from '../context/AuthContext';
 import { theme } from '../theme';
 import PhotoEditor from '../components/PhotoEditor';
+import SkyBackground from '../components/visual/SkyBackground';
+import BubbleField from '../components/visual/BubbleField';
+import GlassButton from '../components/visual/GlassButton';
+import GlassCard from '../components/visual/GlassCard';
+import GlassInput from '../components/visual/GlassInput';
+import GlassChip from '../components/visual/GlassChip';
+import AvatarBubble from '../components/visual/AvatarBubble';
+import ScreenHeader from '../components/visual/ScreenHeader';
+import SectionLabel from '../components/visual/SectionLabel';
 
 // DateTimePicker is native-only; import conditionally
 let DateTimePicker = null;
@@ -342,62 +351,36 @@ export default function ProfileSetupScreen({ navigation }) {
   }
 
   return (
-    <Animated.View style={[styles.flex, enterStyle]}>
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.navigate('Home')}
-        accessibilityRole="button"
-        accessibilityLabel="Go back"
-      >
-        <Text style={styles.backButtonText}>‹ Back</Text>
-      </TouchableOpacity>
-      <Text style={styles.heading}>Set Up Your Profile</Text>
-      <Text style={styles.subheading}>Tell us a bit about yourself so others can find you.</Text>
-      {saveError ? (
-        <Text style={styles.saveError}>{saveError}</Text>
-      ) : null}
-      <ProfileForm onSave={handleSave} saving={saving} photos={photos} onPhotosChange={setPhotos} />
-    </Animated.View>
+    <SkyBackground variant="sky">
+      <BubbleField />
+      <Animated.View style={[styles.flex, enterStyle]}>
+        <ScreenHeader
+          title="Set Up Your Profile"
+          subtitle="Tell us a bit about yourself"
+          onBack={() => navigation.navigate('Home')}
+        />
+        {saveError ? (
+          <Text style={styles.saveError}>{saveError}</Text>
+        ) : null}
+        <ProfileForm onSave={handleSave} saving={saving} photos={photos} onPhotosChange={setPhotos} />
+      </Animated.View>
+    </SkyBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: theme.colors.bgBase },
+  flex: { flex: 1, zIndex: 2 },
   section: { marginBottom: 8 },
   sectionBorder: {
     borderTopWidth: 1,
-    borderTopColor: theme.colors.borderSubtle,
+    borderTopColor: theme.colors.glassBorder,
     paddingTop: 8,
   },
   sectionLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.ink,
     marginBottom: 10,
-  },
-  backButton: {
-    paddingHorizontal: 24,
-    paddingTop: 52,
-    paddingBottom: 4,
-    alignSelf: 'flex-start',
-  },
-  backButtonText: {
-    fontSize: 17,
-    color: theme.colors.brand,
-    fontWeight: '500',
-  },
-  heading: {
-    ...theme.typography.titleMd,
-    color: theme.colors.textPrimary,
-    paddingHorizontal: 24,
-    paddingTop: 8,
-    marginBottom: 4,
-  },
-  subheading: {
-    fontSize: 15,
-    color: '#666',
-    paddingHorizontal: 24,
-    marginBottom: 8,
   },
   saveError: {
     color: theme.colors.error,
@@ -405,59 +388,62 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     marginBottom: 4,
   },
-  container: { padding: 24, paddingBottom: 48 },
+  container: { padding: 24, paddingBottom: 100 },
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: theme.colors.inkSoft,
     marginBottom: 6,
     marginTop: 16,
   },
   required: { color: theme.colors.error },
-  optional: { color: '#999', fontWeight: '400' },
+  optional: { color: theme.colors.inkFaint, fontWeight: '400' },
   input: {
     height: 50,
     borderWidth: 1.5,
-    borderColor: theme.colors.borderDefault,
-    borderRadius: theme.radii.md,
+    borderColor: theme.colors.glassBorder,
+    borderRadius: theme.radii.lg,
     paddingHorizontal: 14,
     fontSize: 16,
-    color: theme.colors.textPrimary,
+    color: theme.colors.ink,
+    backgroundColor: theme.colors.glassTint,
   },
   inputError: { borderColor: theme.colors.error },
-  inputFocused: { borderColor: theme.colors.brand },
+  inputFocused: { borderColor: theme.colors.skyDeep },
   errorText: { color: theme.colors.error, fontSize: 12, marginTop: 4 },
   dateButton: { justifyContent: 'center' },
-  dateText: { fontSize: 16, color: theme.colors.textPrimary },
-  datePlaceholder: { fontSize: 16, color: theme.colors.textFaint },
+  dateText: { fontSize: 16, color: theme.colors.ink },
+  datePlaceholder: { fontSize: 16, color: theme.colors.inkFaint },
   doneBtn: {
     alignSelf: 'flex-end',
     paddingVertical: 6,
     paddingHorizontal: 16,
     marginTop: 4,
   },
-  doneBtnText: { color: theme.colors.brand, fontSize: 16, fontWeight: '600' },
+  doneBtnText: { color: theme.colors.skyDeep, fontSize: 16, fontWeight: '600' },
   bioInput: { height: 90, paddingTop: 12 },
-  charCount: { fontSize: 11, color: '#bbb', textAlign: 'right', marginTop: 2 },
+  charCount: { fontSize: 11, color: theme.colors.inkFaint, textAlign: 'right', marginTop: 2 },
   optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   optionChip: {
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: theme.colors.borderDefault,
+    borderColor: theme.colors.glassBorder,
+    backgroundColor: theme.colors.glassTint,
     marginBottom: 4,
   },
-  optionChipActive: { borderColor: theme.colors.brand, backgroundColor: theme.colors.badgePurpleBg },
-  optionChipText: { fontSize: 14, color: theme.colors.textSecondary },
-  optionChipTextActive: { color: theme.colors.brand, fontWeight: '600' },
+  optionChipActive: { borderColor: theme.colors.skyDeep, backgroundColor: theme.colors.brandMuted },
+  optionChipText: { fontSize: 14, color: theme.colors.inkSoft },
+  optionChipTextActive: { color: theme.colors.skyDeep, fontWeight: '600' },
   saveButton: {
     height: 52,
-    backgroundColor: theme.colors.brand,
-    borderRadius: theme.radii.md,
+    backgroundColor: theme.colors.skyDeep,
+    borderRadius: theme.radii.lg,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 32,
+    ...theme.shadows.orb,
   },
   saveButtonDisabled: { opacity: 0.45 },
   saveButtonText: { color: '#fff', fontSize: 17, fontWeight: '600' },
