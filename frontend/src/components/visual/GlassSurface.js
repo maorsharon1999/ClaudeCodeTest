@@ -61,9 +61,7 @@ export default function GlassSurface({
           pointerEvents="none"
         />
       )}
-      <View style={{ borderRadius: radius, overflow: 'hidden' }}>
-        {children}
-      </View>
+      {children}
     </View>
   );
 }

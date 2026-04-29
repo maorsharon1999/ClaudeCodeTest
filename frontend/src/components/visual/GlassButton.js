@@ -8,6 +8,7 @@ const FONT_SIZES = { sm: 14, md: 16, lg: 17 };
 
 export default function GlassButton({
   children,
+  label,
   variant = 'primary',
   size = 'md',
   onPress,
@@ -100,9 +101,9 @@ export default function GlassButton({
           />
         )}
         <View style={styles.content}>
-          {typeof children === 'string' ? (
+          {typeof (children ?? label) === 'string' ? (
             <Text style={[styles.label, { fontSize, color: textColor }]}>
-              {children}
+              {children ?? label}
             </Text>
           ) : (
             children
